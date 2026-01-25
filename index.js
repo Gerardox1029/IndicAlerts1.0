@@ -98,13 +98,13 @@ loadUsers();
 const SYMBOLS = [
     'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', // Large Caps
     'DOGEUSDT', 'AVAXUSDT', 'ADAUSDT', // Mid Caps
-    'RENDERUSDT', 'NEARUSDT', 'WLDUSDT', 'SUIUSDT' // Small Caps
+    'RENDERUSDT', 'NEARUSDT', 'WLDUSDT', 'SUIUSDT', 'PIPPINUSDT' // Small Caps
 ];
 
 const CATEGORIES = {
     'Large Caps': ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT'],
     'Mid Caps': ['DOGEUSDT', 'AVAXUSDT', 'ADAUSDT'],
-    'Small Caps': ['RENDERUSDT', 'NEARUSDT', 'WLDUSDT', 'SUIUSDT']
+    'Small Caps': ['RENDERUSDT', 'NEARUSDT', 'WLDUSDT', 'SUIUSDT', 'PIPPINUSDT']
 };
 
 const INTERVALS = ['2h'];
