@@ -932,7 +932,7 @@ app.get('/admin/users', (req, res) => {
 });
 
 // Admin: Actualizar preferencias de usuario
-app.post('/admin/update-user-prefs', (req, res) => {
+app.post('/admin/update-user-prefs', async (req, res) => {
     const { password, userId, preferences } = req.body;
     if (password !== 'awd ') return res.status(403).json({ success: false });
 
@@ -948,7 +948,7 @@ app.post('/admin/update-user-prefs', (req, res) => {
 });
 
 // Admin: Eliminar usuario
-app.post('/admin/delete-user', (req, res) => {
+app.post('/admin/delete-user', async (req, res) => {
     const { password, userId } = req.body;
     if (password !== 'awd ') return res.status(403).json({ success: false });
 
