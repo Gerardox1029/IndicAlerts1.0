@@ -1466,7 +1466,7 @@ app.get('/', (req, res) => {
                 <p>Todo parte desde el <strong class="text-white">RSI suavizado</strong>, que en pocas palabras, determina la tendencia de la fuerza del mercado.</p>
                 <p>Cuando este suavizado es horizontal o plano, IndicAlert notificará porque es un buen momento de buscar una operación.</p>
                 <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
-                    <p class="text-sm">🤖 <strong class="text-white">Algoritmo:</strong> Toma los últimos 10 periodos anteriores para determinar si se viene de una fuerza bajista o alcista, determinando un posible LONG o SHORT.</p>
+                    <p class="text-sm">🤖 <strong class="text-white">Algoritmo:</strong> Se basa en los últimos 10 periodos anteriores para determinar si se viene de una fuerza bajista o alcista, determinando un posible LONG o SHORT.</p>
                 </div>
                 
                 <div>
