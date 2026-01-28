@@ -205,15 +205,11 @@ app.post('/admin/broadcast-message', async (req, res) => {
     if (!message) return res.status(400).json({ success: false, message: 'Empty message' });
 
     try {
-        // Broadcast to all users in userDatabase
-        const userIds = Object.keys(userDatabase);
-        let sentCount = 0;
+        // Broadcast to all users via existing helper (it handles iteration internally)
         const fullMessage = `📢 MENSAJE GENERAL:\n\n${message}`;
+        const sentMessages = await enviarTelegram(fullMessage, null); // null symbol = broadcast to all
 
-        for (const uid of userIds) {
-            await enviarTelegram(fullMessage, null, uid); // direct to user
-            sentCount++;
-        }
+        const sentCount = sentMessages ? sentMessages.length : 0;
 
         console.log(`📢 Mensaje general enviado a ${sentCount} usuarios.`);
         res.json({ success: true, count: sentCount });
