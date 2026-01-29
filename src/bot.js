@@ -1,3 +1,4 @@
+process.env.NTBA_FIX_350 = 1;
 const TelegramBot = require('node-telegram-bot-api');
 const fs = require('fs');
 const path = require('path');
@@ -7,7 +8,8 @@ const {
     THREAD_ID,
     STICKERS_FILE,
     AUDIOS_FILE,
-    SYMBOLS
+    SYMBOLS,
+    CATEGORIES
 } = require('./config');
 const state = require('./services/state');
 const { saveUser, Sticker, Audio } = require('./db/mongo');
@@ -264,16 +266,36 @@ function setupListeners() {
         waitingForNickname.add(chatId);
     });
 
-    // /alsison (Hidden Command)
+    // /alsison (Hidden Command updated for Local File Persistence)
     bot.onText(/\/alsison/i, (msg) => {
-        const secretAudioId = "AwACAgEAAxkBAAFBSp5peCypjmsmXDqkI3sjW65fvHvttQACnAUAAoRokEaewOSmAjO51DgE";
         const chatId = msg.chat.id;
         const sendOptions = msg.message_thread_id ? { message_thread_id: msg.message_thread_id } : {};
+        const secretAudioId = "AwACAgEAAxkBAAFBSp5peCypjmsmXDqkI3sjW65fvHvttQACnAUAAoRokEaewOSmAjO51DgE";
 
+        console.log(`🎤 Comando /alsison recibido de ${msg.from.username}`);
+
+        // 1. Try Local File (Permanent Solution)
+        const assetPath = path.join(__dirname, 'assets'); // src/assets
+        const localOgg = path.join(assetPath, 'alsison.ogg');
+        const localMp3 = path.join(assetPath, 'alsison.mp3');
+
+        if (fs.existsSync(localOgg)) {
+            bot.sendVoice(chatId, fs.createReadStream(localOgg), sendOptions).catch(e => console.error("Error enviando alsison local (ogg):", e.message));
+            return;
+        }
+        if (fs.existsSync(localMp3)) {
+            bot.sendAudio(chatId, fs.createReadStream(localMp3), sendOptions).catch(e => console.error("Error enviando alsison local (mp3):", e.message));
+            return;
+        }
+
+        // 2. Fallback to File ID
         bot.sendVoice(chatId, secretAudioId, sendOptions).catch((e) => {
-            console.error("Error enviando alsison:", e.message);
-            // Try as audio if voice fails
-            bot.sendAudio(chatId, secretAudioId, sendOptions).catch(console.error);
+            console.error("⚠️ Error enviando alsison (Voice ID):", e.message);
+            // Fallback: Try as Audio
+            bot.sendAudio(chatId, secretAudioId, sendOptions).catch((e2) => {
+                console.error("❌ Error enviando alsison (Audio ID):", e2.message);
+                bot.sendMessage(chatId, "❌ No se encontró el audio local ni funcionó el ID de Telegram. Por favor coloca 'alsison.ogg' o 'alsison.mp3' en la carpeta 'src/assets' para solucionarlo permanentemente.", sendOptions);
+            });
         });
     });
 
@@ -309,7 +331,35 @@ function setupListeners() {
         const threadId = msg.message_thread_id;
         const dateStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
-        const reportMsg = `📊 REPORTE GENERAL - ${dateStr}\n\nEstado Dominante: ${marketSummary.dominantState}\n${marketSummary.terrainNote !== "Indecisión (No operar) ⚖️" ? `` : ''}\n\nBy Ditox🔥\n\n🕒 ${getPeruTime()} (PE)`;
+        // Cálcular Fuerza Macro del Mercado (Moda de Large Caps)
+        let macroVotes = { 'ALCISTA': 0, 'BAJISTA': 0, 'NEUTRAL': 0 };
+        const largeCaps = CATEGORIES['Large Caps'] || ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT'];
+
+        // Fetch paralelo para velocidad
+        const promises = largeCaps.map(async (s) => {
+            const d = await fetchData(s, '4h');
+            if (!d) return 'NEUTRAL';
+            const ind = calcularIndicadores(d.closes, d.highs, d.lows);
+            if (ind && ind.tangentsHistory && ind.tangentsHistory.length >= 3) {
+                const [t0, t1, t2] = ind.tangentsHistory;
+                if (t0 > 0 && t1 > 0 && t2 > 0) return 'ALCISTA';
+                if (t0 < 0 && t1 < 0 && t2 < 0) return 'BAJISTA';
+            }
+            return 'NEUTRAL';
+        });
+
+        const results = await Promise.all(promises);
+        results.forEach(r => macroVotes[r]++);
+
+        let marketMacro = 'NEUTRAL';
+        if (macroVotes['ALCISTA'] > macroVotes['BAJISTA'] && macroVotes['ALCISTA'] > macroVotes['NEUTRAL']) marketMacro = 'ALCISTA';
+        else if (macroVotes['BAJISTA'] > macroVotes['ALCISTA'] && macroVotes['BAJISTA'] > macroVotes['NEUTRAL']) marketMacro = 'BAJISTA';
+
+        const macroText = marketMacro === 'ALCISTA' ? "Fuerza macro (4h): Alcista 🚀" :
+            marketMacro === 'BAJISTA' ? "Fuerza macro (4h): Bajista 🔻" :
+                "Fuerza macro (4h): Neutral ⚖️";
+
+        const reportMsg = `📊 REPORTE GENERAL - ${dateStr}\n\nEstado Dominante: ${marketSummary.dominantState}\n${marketSummary.terrainNote !== "Indecisión (No operar) ⚖️" ? `` : ''}\n${macroText}\n\nBy Ditox🔥\n\n🕒 ${getPeruTime()} (PE)`;
 
         await bot.sendMessage(chatId, reportMsg, { message_thread_id: threadId });
 
@@ -357,12 +407,27 @@ function setupListeners() {
                 else if (tangente > 0) signalForCalc = 'LONG';
                 else if (tangente < 0) signalForCalc = 'SHORT';
 
+                // Calcular Fuerza Macro Individual (4h)
+                let macroTrend = 'NEUTRAL';
+                const data4h = await fetchData(symbol, '4h');
+                if (data4h) {
+                    const ind4h = calcularIndicadores(data4h.closes, data4h.highs, data4h.lows);
+                    if (ind4h && ind4h.tangentsHistory && ind4h.tangentsHistory.length >= 3) {
+                        const [t0, t1, t2] = ind4h.tangentsHistory;
+                        if (t0 > 0 && t1 > 0 && t2 > 0) macroTrend = 'ALCISTA';
+                        else if (t0 < 0 && t1 < 0 && t2 < 0) macroTrend = 'BAJISTA';
+                    }
+                }
+                const macroText = macroTrend === 'ALCISTA' ? "Fuerza macro (4h): Alcista 🚀" :
+                    macroTrend === 'BAJISTA' ? "Fuerza macro (4h): Bajista 🔻" :
+                        "Fuerza macro (4h): Neutral ⚖️";
 
                 let reportMsg = `✍️ REPORTE MANUAL
                 
 💎 ${symbol} (${interval})
 Precio: $${indicadores.currentPrice}
 Estado: ${estadoInfo.text} ${estadoInfo.emoji}
+${macroText}
 `;
 
                 reportMsg += `\n\n🕒 ${getPeruTime()} (PE)`;

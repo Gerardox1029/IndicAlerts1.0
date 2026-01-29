@@ -14,7 +14,7 @@ const CATEGORIES = {
 };
 
 const INTERVALS = ['2h'];
-const CHECK_INTERVAL_MS = 60000; // 1 minuto
+const CHECK_INTERVAL_MS = 180000; // 1 minuto
 const REQUEST_DELAY_MS = 250;
 
 const PORT = process.env.PORT || 3000;

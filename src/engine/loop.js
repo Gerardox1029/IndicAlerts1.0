@@ -42,18 +42,16 @@ function obtenerEstado(tangente, curveTrend, symbol) {
     if (tangente < -0.10) return { text: "SHORT en curso...", emoji: "🔴", color: "text-red-400", weight: 5 };
 
     if (curveTrend === 'DOWN') {
-        trackTerrain('LONG', symbol);
         return { text: "En terreno de LONG", emoji: "🍏", color: "text-lime-400", weight: 0, terrain: 'LONG' };
     }
     if (curveTrend === 'UP') {
-        trackTerrain('SHORT', symbol);
         return { text: "En terreno de SHORT", emoji: "🍎", color: "text-orange-400", weight: 0, terrain: 'SHORT' };
     }
 
     return { text: "Indecisión (No operar)", emoji: "🦀", color: "text-gray-400", weight: 0 };
 }
 
-function evaluarAlertas(symbol, interval, indicadores, lastCandleTime, highs, lows) {
+function evaluarAlertas(symbol, interval, indicadores, lastCandleTime, highs, lows, macroTrend = null) {
     const { tangente, curveTrend } = indicadores;
     let signal = null;
 
@@ -63,6 +61,18 @@ function evaluarAlertas(symbol, interval, indicadores, lastCandleTime, highs, lo
     }
 
     if (!signal) return null;
+
+    // Validación extra para TF 2h con TF 4h
+    // Validación extra para TF 2h con CONFIRMACIÓN MACRO (4h)
+    if (interval === '2h') {
+        if (signal === 'LONG') {
+            // Requiere Macro Alcista (3 velas 4h con tangente positiva)
+            if (macroTrend !== 'ALCISTA') return null;
+        } else if (signal === 'SHORT') {
+            // Requiere Macro Bajista (3 velas 4h con tangente negativa)
+            if (macroTrend !== 'BAJISTA') return null;
+        }
+    }
 
     const key = `${symbol}_${interval}`;
     const estadoPrevio = estadoAlertas[key] || {};
@@ -210,12 +220,52 @@ async function procesarMercado() {
             estadoAlertas[key].currentPrice = indicadores.currentPrice;
             estadoAlertas[key].tangente = indicadores.tangente;
 
-            const result = evaluarAlertas(symbol, interval, indicadores, lastCandleTime, highs, lows);
+            // --- Lógica de validación con 4h para alertas de 2h y estado ---
+            let macroTrend = 'NEUTRAL'; // ALCISTA, BAJISTA, NEUTRAL
+
+            // Solo buscamos 4h si es 2h
+            if (interval === '2h') {
+                try {
+                    const data4h = await fetchData(symbol, '4h');
+                    if (data4h) {
+                        const ind4h = calcularIndicadores(data4h.closes, data4h.highs, data4h.lows);
+                        if (ind4h && ind4h.tangentsHistory && ind4h.tangentsHistory.length >= 3) {
+                            // Evaluar últimas 3 velas (t0, t1, t2)
+                            const [t0, t1, t2] = ind4h.tangentsHistory;
+                            if (t0 > 0 && t1 > 0 && t2 > 0) macroTrend = 'ALCISTA';
+                            else if (t0 < 0 && t1 < 0 && t2 < 0) macroTrend = 'BAJISTA';
+                        }
+                    }
+                } catch (e) {
+                    console.error(`Error validando 4h para ${symbol}:`, e.message);
+                }
+            }
+
+            // Actualizar Estado en Dashboard con info Macro
+            if (macroTrend === 'ALCISTA' && estadoInfo.terrain === 'LONG') {
+                estadoAlertas[key].macroStatus = "Confirmación MACRO (4h) 🚀";
+                // Solo aquí sumamos al trackTerrain para alerta general
+                trackTerrain('LONG', symbol);
+            } else if (macroTrend === 'BAJISTA' && estadoInfo.terrain === 'SHORT') {
+                estadoAlertas[key].macroStatus = "Confirmación MACRO (4h) 🔻";
+                trackTerrain('SHORT', symbol);
+            } else if (estadoInfo.terrain) {
+                estadoAlertas[key].macroStatus = "Sin confirmación MACRO (4h) ⚠️";
+            } else {
+                estadoAlertas[key].macroStatus = "";
+            }
+
+            const result = evaluarAlertas(symbol, interval, indicadores, lastCandleTime, highs, lows, macroTrend);
 
             if (result && result.signal) {
                 const { signal } = result;
 
-                let message = `🚀 ALERTA DITOX\n\n💎 ${symbol}\n\n⏱ Temporalidad: ${interval}\n📈 Estado: ${estadoInfo.text} ${estadoInfo.emoji}`;
+
+
+                const macroText = macroTrend === 'ALCISTA' ? "Fuerza macro (4h): Alcista 🚀" :
+                    macroTrend === 'BAJISTA' ? "Fuerza macro (4h): Bajista 🔻" : "";
+
+                let message = `🚀 ALERTA DITOX\n\n💎 ${symbol}\n\n⏱ Temporalidad: ${interval}\n📈 Estado: ${estadoInfo.text} ${estadoInfo.emoji}\n${macroText}`;
 
                 const sentMessages = await enviarTelegram(message, symbol);
 

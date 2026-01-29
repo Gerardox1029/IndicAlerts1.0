@@ -73,6 +73,7 @@ async function fetchDashboardData() {
                 const price = alertState.currentPrice ? '$' + alertState.currentPrice : 'Cargando...';
                 const statusEmoji = alertState.currentStateEmoji || '⏳';
                 const statusText = alertState.currentStateText || 'Esperando datos...';
+                const macroStatus = alertState.macroStatus || '';
 
                 card.setAttribute('data-price', price);
                 card.setAttribute('data-status', statusText + ' ' + statusEmoji);
@@ -80,7 +81,17 @@ async function fetchDashboardData() {
                 card.querySelector('.text-3xl').textContent = statusEmoji;
                 card.querySelector('.relative.z-10.mb-6 p').textContent = statusText;
 
-                // Entry Price update REMOVED
+                // Macro Status Update
+                let macroEl = card.querySelector('.macro-status');
+                if (!macroEl) {
+                    macroEl = document.createElement('p');
+                    macroEl.className = 'macro-status text-xs font-bold mt-1 text-yellow-300';
+                    card.querySelector('.relative.z-10.mb-6').appendChild(macroEl);
+                }
+                macroEl.textContent = macroStatus;
+                macroEl.className = 'macro-status text-xs font-bold mt-1 ' +
+                    (macroStatus.includes('🚀') ? 'text-green-400' :
+                        macroStatus.includes('🔻') ? 'text-red-400' : 'text-yellow-500');
             }
         });
 

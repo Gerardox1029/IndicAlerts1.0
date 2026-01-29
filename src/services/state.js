@@ -36,5 +36,5 @@ module.exports = {
     marketSummary,
     stickyDatabase,
     audioDatabase,
-    isSystemActive: false // Default state
+    isSystemActive: true // Default state (Active immediately)
 };

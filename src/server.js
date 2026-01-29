@@ -397,7 +397,7 @@ app.get('/', (req, res) => {
 
         <!-- Ditox Nav Bar -->
         <nav id="ditox-navbar" class="hidden mb-8 bg-gray-800/60 backdrop-blur-xl rounded-2xl border border-purple-500/30 p-2 flex justify-center gap-2 shadow-2xl">
-            <button onclick="showSection('dashboard')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all bg-purple-900/40 text-white shadow-lg">
+            <button onclick="showSection('dashboard')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
                 🚀 Panel del Bot
             </button>
             <button onclick="showSection('history')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">

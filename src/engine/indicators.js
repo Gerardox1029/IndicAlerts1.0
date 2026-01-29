@@ -16,9 +16,20 @@ function calcularIndicadores(closes, highs, lows) {
 
     if (rsiSuavizadoValues.length < 15) return null;
 
+    // Tangente actual
     const currentRsiSuavizado = rsiSuavizadoValues[rsiSuavizadoValues.length - 1];
     const prevRsiSuavizado = rsiSuavizadoValues[rsiSuavizadoValues.length - 2];
     const tangente = currentRsiSuavizado - prevRsiSuavizado;
+
+    // Historial de tangentes (últimas 3 velas)
+    // t0 = actual, t1 = anterior, t2 = trasanterior
+    const tangentsHistory = [];
+    if (rsiSuavizadoValues.length >= 4) {
+        const i = rsiSuavizadoValues.length - 1;
+        tangentsHistory.push(rsiSuavizadoValues[i] - rsiSuavizadoValues[i - 1]);     // t0 (actual)
+        tangentsHistory.push(rsiSuavizadoValues[i - 1] - rsiSuavizadoValues[i - 2]);   // t1
+        tangentsHistory.push(rsiSuavizadoValues[i - 2] - rsiSuavizadoValues[i - 3]);   // t2
+    }
 
     // Análisis de Curvatura (Últimos 10 periodos)
     const recentValues = rsiSuavizadoValues.slice(-11, -1);
@@ -41,6 +52,7 @@ function calcularIndicadores(closes, highs, lows) {
     return {
         rsiSuavizado: currentRsiSuavizado,
         tangente: tangente,
+        tangentsHistory: tangentsHistory, // [t0, t1, t2] (Actual -> Pasado)
         curveTrend: curveTrend,
         currentPrice: closes[closes.length - 1],
         highs, // Pasar para referencia de decimales
