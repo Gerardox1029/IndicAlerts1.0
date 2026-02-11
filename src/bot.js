@@ -16,6 +16,7 @@ const { saveUser, Sticker, Audio } = require('./db/mongo');
 const { fetchData } = require('./api/binance');
 const { calcularIndicadores } = require('./engine/indicators');
 const { getPeruTime, formatPrice } = require('./utils/helpers');
+// dateStr removed - now using getPeruTime()
 
 // Helper state local pointers
 const {
@@ -33,6 +34,15 @@ let procesarMercadoFn = null; // Dependency injection
 
 function setProcesarMercado(fn) {
     procesarMercadoFn = fn;
+}
+
+// Helper: Determine Chat Name (User vs Group)
+function resolveChatName(msg) {
+    if (msg.chat.type === 'private') {
+        const fromName = msg.from ? (msg.from.username || msg.from.first_name) : null;
+        return fromName || 'Usuario';
+    }
+    return msg.chat.title || 'Grupo/Canal';
 }
 
 // Sticker & Audio Logic
@@ -143,7 +153,7 @@ async function enviarTelegram(messageText, symbol = null, options = {}) {
 
     for (const chatId of finalRecipients) {
         try {
-            const sendOptions = {};
+            const sendOptions = { parse_mode: 'HTML' };
             // Thread ID Logic
             if (String(chatId).trim() === String(TARGET_GROUP_ID).trim() && THREAD_ID) {
                 sendOptions.message_thread_id = parseInt(THREAD_ID);
@@ -216,7 +226,7 @@ async function simulateSignalEffect(symbol, type, options = {}) {
         }, 60000);
     }
 
-    let message = `🚀 ALERTA DITOX (SIMULACRO)\n\n💎 ${sUpper}\n\n⏱ Temporalidad: ${interval}\n📈 Estado: ${text} ${emoji}`;
+    let message = `🚀 ALERTA DITOX (SIMULACRO)\n\n💎 ${sUpper}\n\n⏱ <b>Temporalidad:</b> ${interval}\n�<b>Estado:</b> ${text} ${emoji}`;
 
     const sentMessages = await enviarTelegram(message, sUpper);
 
@@ -228,6 +238,7 @@ async function simulateSignalEffect(symbol, type, options = {}) {
         tangente,
         sentMessages: sentMessages || [],
         observation: null,
+        macroText: "(Simulado)", // Placeholder for simulation
         id: Date.now(),
         lastEntryType: tUpper.includes('LONG') ? 'LONG' : 'SHORT'
     });
@@ -260,10 +271,23 @@ function setupListeners() {
     // /start
     bot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
-        const name = msg.from.username || msg.from.first_name;
+        const name = resolveChatName(msg);
         saveUser(chatId, name);
-        bot.sendMessage(chatId, `👋 ¡Bienvenido a IndicAlerts Ditox! ${name ? `Hola ${name}.` : ''}\n\nEstás suscrito a las alertas automáticas. Para mejorar tu experiencia, **por favor responde a este mensaje con un apodo o nombre** que prefieras que usemos en el panel.`);
+        bot.sendMessage(chatId, `👋 ¡Bienvenido a IndicAlerts Ditox! ${name ? `Hola ${name}.` : ''}\n\nEstás suscrito a las alertas automáticas. Para mejorar tu experiencia, <b>por favor responde a este mensaje con un apodo o nombre</b> que prefieras que usemos en el panel.`, { parse_mode: 'HTML' });
         waitingForNickname.add(chatId);
+    });
+
+    // /panel
+    bot.onText(/\/panel/i, async (msg) => {
+        const chatId = msg.chat.id;
+        const sendOptions = msg.message_thread_id ? { message_thread_id: msg.message_thread_id, parse_mode: 'HTML' } : { parse_mode: 'HTML' };
+
+        const name = resolveChatName(msg);
+        saveUser(chatId, name);
+
+        const message = `Explora el PANEL de IndicAlerts Ditox aquí: https://indicdtx--indicalerts-ditox-v1--tcggpbtpgkpk.code.run/ 🚀`;
+
+        await bot.sendMessage(chatId, message, sendOptions);
     });
 
     // /alsison (Hidden Command updated for Local File Persistence)
@@ -316,20 +340,15 @@ function setupListeners() {
         } catch (e) {
             await bot.sendVoice(chatId, randomAudio, sendOptions).catch(err => console.error("Error enviando audio/voz:", err.message));
         }
-
-        if (state.stickyDatabase.length > 0) {
-            const randomSticker = state.stickyDatabase[Math.floor(Math.random() * state.stickyDatabase.length)];
-            bot.sendSticker(chatId, randomSticker, sendOptions).catch(e => console.error("Error enviando sticker:", e.message));
-        }
     });
 
     // /reportALL
     bot.onText(/\/reportALL/i, async (msg) => {
         const chatId = msg.chat.id;
-        const username = msg.from.username || msg.from.first_name || 'Usuario';
+        const username = resolveChatName(msg);
         saveUser(chatId, username);
         const threadId = msg.message_thread_id;
-        const dateStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' });
+
 
         // Cálcular Fuerza Macro del Mercado (Moda de Large Caps)
         let macroVotes = { 'ALCISTA': 0, 'BAJISTA': 0, 'NEUTRAL': 0 };
@@ -355,13 +374,13 @@ function setupListeners() {
         if (macroVotes['ALCISTA'] > macroVotes['BAJISTA'] && macroVotes['ALCISTA'] > macroVotes['NEUTRAL']) marketMacro = 'ALCISTA';
         else if (macroVotes['BAJISTA'] > macroVotes['ALCISTA'] && macroVotes['BAJISTA'] > macroVotes['NEUTRAL']) marketMacro = 'BAJISTA';
 
-        const macroText = marketMacro === 'ALCISTA' ? "Fuerza macro (4h): Alcista 🚀" :
-            marketMacro === 'BAJISTA' ? "Fuerza macro (4h): Bajista 🔻" :
-                "Fuerza macro (4h): Neutral ⚖️";
+        const macroText = marketMacro === 'ALCISTA' ? "<b>Fuerza macro (4h):</b> Alcista 🚀" :
+            marketMacro === 'BAJISTA' ? "<b>Fuerza macro (4h):</b> Bajista 🔻" :
+                "<b>Fuerza macro (4h):</b> Neutral ⚖️";
 
-        const reportMsg = `📊 REPORTE GENERAL - ${dateStr}\n\nEstado Dominante: ${marketSummary.dominantState}\n${marketSummary.terrainNote !== "Indecisión (No operar) ⚖️" ? `` : ''}\n${macroText}\n\nBy Ditox🔥\n\n🕒 ${getPeruTime()} (PE)`;
+        const reportMsg = `📊 REPORTE GENERAL\n\n📸 <b>Estado Dominante:</b> ${marketSummary.dominantState}\n${marketSummary.terrainNote !== "Indecisión (No operar) ⚖️" ? `` : ''}\n🪐 ${macroText}\n\nBy Ditox🔮\n\n🕒 ${getPeruTime()} (PE)`;
 
-        await bot.sendMessage(chatId, reportMsg, { message_thread_id: threadId });
+        await bot.sendMessage(chatId, reportMsg, { message_thread_id: threadId, parse_mode: 'HTML' });
 
         if (state.stickyDatabase.length > 0) {
             const randomSticker = state.stickyDatabase[Math.floor(Math.random() * state.stickyDatabase.length)];
@@ -372,7 +391,7 @@ function setupListeners() {
     // /report [symbol]
     bot.onText(/\/report(?!\s*ALL\b|\s*AlfaroMuerdeAlmohadas\b)(.+)/i, async (msg, match) => {
         const chatId = msg.chat.id;
-        const username = msg.from.username || msg.from.first_name || 'Usuario';
+        const username = resolveChatName(msg);
         saveUser(chatId, username);
         const threadId = msg.message_thread_id;
         const rawSymbol = match[1].trim().toUpperCase();
@@ -418,21 +437,24 @@ function setupListeners() {
                         else if (t0 < 0 && t1 < 0 && t2 < 0) macroTrend = 'BAJISTA';
                     }
                 }
-                const macroText = macroTrend === 'ALCISTA' ? "Fuerza macro (4h): Alcista 🚀" :
-                    macroTrend === 'BAJISTA' ? "Fuerza macro (4h): Bajista 🔻" :
-                        "Fuerza macro (4h): Neutral ⚖️";
+                const macroText = macroTrend === 'ALCISTA' ? "<b>Fuerza macro (4h):</b> Alcista 🚀" :
+                    macroTrend === 'BAJISTA' ? "<b>Fuerza macro (4h):</b> Bajista 🔻" :
+                        "<b>Fuerza macro (4h):</b> Neutral ⚖️";
 
                 let reportMsg = `✍️ REPORTE MANUAL
                 
-💎 ${symbol} (${interval})
-Precio: $${indicadores.currentPrice}
-Estado: ${estadoInfo.text} ${estadoInfo.emoji}
-${macroText}
+💎 <b>${symbol} (${interval})</b>
+
+💰 <b>Precio:</b> $${indicadores.currentPrice}
+📸 <b>Estado:</b> ${estadoInfo.text} ${estadoInfo.emoji}
+🪐 ${macroText}
+
+By Ditox🔮
 `;
 
-                reportMsg += `\n\n🕒 ${getPeruTime()} (PE)`;
+                reportMsg += `\n🕒 ${getPeruTime()} (PE)`;
 
-                await bot.sendMessage(chatId, reportMsg, { message_thread_id: threadId });
+                await bot.sendMessage(chatId, reportMsg, { message_thread_id: threadId, parse_mode: 'HTML' });
                 if (state.stickyDatabase.length > 0) {
                     const randomSticker = state.stickyDatabase[Math.floor(Math.random() * state.stickyDatabase.length)];
                     bot.sendSticker(chatId, randomSticker, { message_thread_id: threadId }).catch(console.error);
@@ -497,12 +519,12 @@ ${macroText}
         if (waitingForNickname.has(chatId)) {
             const nickname = msg.text.trim().substring(0, 20);
             saveUser(chatId, nickname);
-            bot.sendMessage(chatId, `✅ ¡Perfecto! Te hemos guardado como **${nickname}**. Ya puedes recibir alertas y usar comandos como /reportALL.`);
+            bot.sendMessage(chatId, `✅ ¡Perfecto! Te hemos guardado como <b>${nickname}</b>. Ya puedes recibir alertas y usar comandos como /reportALL o /reportBTC para monitorear el estado crypto. \nExplora el PANEL de IndicAlerts aquí: https://indicdtx--indicalerts-ditox-v1--tcggpbtpgkpk.code.run/`, { parse_mode: 'HTML' });
             waitingForNickname.delete(chatId);
             return;
         }
 
-        const username = msg.from ? (msg.from.username || msg.from.first_name) : 'Usuario';
+        const username = resolveChatName(msg);
         saveUser(chatId, username);
     });
 

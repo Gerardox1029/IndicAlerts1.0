@@ -57,7 +57,7 @@ app.post('/admin/send-direct-message', async (req, res) => {
 
     try {
         const bot = getBot();
-        if (bot) await bot.sendMessage(userId, `📩 **MENSAJE DEL ADMINISTRADOR:**\n\n${message}`);
+        if (bot) await bot.sendMessage(userId, `📩 <b>MENSAJE DEL ADMINISTRADOR:</b>\n\n${message}`, { parse_mode: 'HTML' });
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
@@ -89,19 +89,27 @@ app.post('/admin/update-signal', async (req, res) => {
         const type = signalEntry.signal;
         baseMessage = `🚨 ALERTA DE MERCADO DITOX - ${signalEntry.consolidatedDateStr}\n\nEn terreno de ${type},\nA TRADEAR! 🚀🔥\n\nDominantes: ${signalEntry.consolidatedDominants}\n\nObservación (by Ditox): ${observationType} ${obsEmoji}`;
     } else {
-        baseMessage = `🚀 ALERTA DITOX
-💎 ${signalEntry.symbol}
+        const { getPeruTime } = require('./utils/helpers');
 
-⏱ Temporalidad: ${signalEntry.interval}
-📈 Estado: ${signalEntry.estadoText} ${signalEntry.estadoText.includes('LONG') && signalEntry.tangente > 1 ? '🚀' :
+        const macroText = signalEntry.macroText || "Fuerza macro (4h): No disponible ⚠️";
+        const timeStr = getPeruTime(new Date(signalEntry.time));
+        const price = signalEntry.price || signalEntry.currentPrice || "?";
+        const priceLine = price !== "?" ? `\n💰<b>Precio:</b> $${price}` : "\n";
+
+        baseMessage = `🚀 ALERTA DITOX
+
+💎 <b>${signalEntry.symbol} (${signalEntry.interval})</b>
+${priceLine}
+📸 <b>Estado:</b> ${signalEntry.estadoText} ${signalEntry.estadoText.includes('LONG') && signalEntry.tangente > 1 ? '🚀' :
                 signalEntry.estadoText.includes('LONG') ? '🟢' :
                     signalEntry.estadoText.includes('SHORT') && signalEntry.tangente < -1 ? '🩸' :
                         signalEntry.estadoText.includes('SHORT') ? '🔴' :
                             signalEntry.estadoText.includes('Terreno de LONG') ? '🍏' : '🍎'}
- Observación: ${observationType} ${obsEmoji}`;
+🪐 ${macroText}
 
-        // Ensure lastEntryPrice exists and is valid before formatting
-        /* REMOVED ENTRY TICK LOGIC */
+🔎 <b>Observación Ditox:</b> ${observationType} ${obsEmoji}
+
+🕒 ${timeStr} (PE)`;
     }
 
     console.log(`📝 Actualizando señal ${signalId} con observación: ${observationType}`);
@@ -113,7 +121,8 @@ app.post('/admin/update-signal', async (req, res) => {
                 if (bot) {
                     await bot.editMessageText(baseMessage, {
                         chat_id: msgInfo.chatId,
-                        message_id: msgInfo.messageId
+                        message_id: msgInfo.messageId,
+                        parse_mode: 'HTML'
                     });
                     console.log(`Message updated for chat ${msgInfo.chatId}`);
                 }
@@ -175,10 +184,10 @@ app.post('/admin/simulate-user-alert', async (req, res) => {
 
     const user = userDatabase[userId];
     if (user) {
-        const msg = `🧪 SIMULACRO DE ALERTA GENERAL\n\nHola ${user.username}, esto es una prueba del sistema de alertas generales.`;
+        const msg = `🧪 <b>SIMULACRO DE ALERTA GENERAL</b>\n\nHola ${user.username}, esto es una prueba del sistema de alertas generales.`;
         try {
             const bot = getBot();
-            if (bot) await bot.sendMessage(userId, msg);
+            if (bot) await bot.sendMessage(userId, msg, { parse_mode: 'HTML' });
             return res.json({ success: true });
         } catch (e) {
             return res.status(500).json({ success: false, message: e.message });
@@ -405,6 +414,19 @@ app.get('/', (req, res) => {
             </button>
             <button onclick="showSection('users')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
                 👥 Panel de Usuarios
+            </button>
+        </nav>
+
+
+        <nav class="hidden mb-8 bg-gray-800/60 backdrop-blur-xl rounded-2xl border border-purple-500/30 p-2 flex justify-center gap-2 shadow-2xl">
+            <button onclick="showSection('scalper')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
+                🚀 Scalper Mode
+            </button>
+            <button onclick="showSection('dashboard')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
+                📜 Intraday Mode
+            </button>
+            <button onclick="showSection('swingtrader')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
+                👥 Swing trader Mode
             </button>
         </nav>
 

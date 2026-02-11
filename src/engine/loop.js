@@ -262,10 +262,10 @@ async function procesarMercado() {
 
 
 
-                const macroText = macroTrend === 'ALCISTA' ? "Fuerza macro (4h): Alcista 🚀" :
-                    macroTrend === 'BAJISTA' ? "Fuerza macro (4h): Bajista 🔻" : "";
+                const macroText = macroTrend === 'ALCISTA' ? "<b>Fuerza macro (4h):</b> Alcista 🚀" :
+                    macroTrend === 'BAJISTA' ? "<b>Fuerza macro (4h):</b> Bajista 🔻" : "";
 
-                let message = `🚀 ALERTA DITOX\n\n💎 ${symbol}\n\n⏱ Temporalidad: ${interval}\n📈 Estado: ${estadoInfo.text} ${estadoInfo.emoji}\n${macroText}`;
+                let message = `🚀 ALERTA DITOX\n\n 💎 <b>${symbol} (${interval})</b>\n\n💰 <b>Precio:</b> $${indicadores.currentPrice}\n📸 <b>Estado:</b> ${estadoInfo.text} ${estadoInfo.emoji}\n🪐 ${macroText}`;
 
                 const sentMessages = await enviarTelegram(message, symbol);
 
@@ -277,6 +277,8 @@ async function procesarMercado() {
                     tangente: indicadores.tangente,
                     sentMessages: sentMessages || [],
                     observation: null,
+                    macroText, // Guardar texto macro para reportes admin
+                    currentPrice: indicadores.currentPrice, // Guardar precio para reporte admin
                     id: Date.now()
                 });
                 if (history.length > 20) history.pop();
