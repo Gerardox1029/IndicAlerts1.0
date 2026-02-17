@@ -200,12 +200,12 @@ async function simulateSignalEffect(symbol, type, options = {}) {
     if (tUpper.includes('LONG')) {
         tangente = tUpper.includes('EUPHORIA') ? 1.5 : 0.05;
         curveTrend = 'DOWN';
-        text = tUpper.includes('EUPHORIA') ? "LONG en euforia, no buscar SHORT" : "En terreno de LONG";
+        text = tUpper.includes('EUPHORIA') ? "LONG en euforia, no buscar SHORT" : "En terreno de LONG, prepara tu orden LIMIT";
         emoji = tUpper.includes('EUPHORIA') ? "🚀" : "🍏";
     } else if (tUpper.includes('SHORT')) {
         tangente = tUpper.includes('EUPHORIA') ? -1.5 : -0.05;
         curveTrend = 'UP';
-        text = tUpper.includes('EUPHORIA') ? "SHORT en euforia, no buscar LONG" : "En terreno de SHORT";
+        text = tUpper.includes('EUPHORIA') ? "SHORT en euforia, no buscar LONG" : "En terreno de SHORT, prepara tu orden LIMIT";
         emoji = tUpper.includes('EUPHORIA') ? "🩸" : "🔴";
     }
 

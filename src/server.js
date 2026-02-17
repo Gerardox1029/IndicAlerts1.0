@@ -87,7 +87,7 @@ app.post('/admin/update-signal', async (req, res) => {
 
     if (signalEntry.isConsolidated) {
         const type = signalEntry.signal;
-        baseMessage = `🚨 ALERTA DE MERCADO DITOX - ${signalEntry.consolidatedDateStr}\n\nEn terreno de ${type},\nA TRADEAR! 🚀🔥\n\nDominantes: ${signalEntry.consolidatedDominants}\n\nObservación (by Ditox): ${observationType} ${obsEmoji}`;
+        baseMessage = `🚨 ALERTA DE MERCADO DITOX - ${signalEntry.consolidatedDateStr}\n\nEn terreno de ${type},\nPrepara tu orden LIMIT, A TRADEAR! 🚀🔥\n\nDominantes: ${signalEntry.consolidatedDominants}\n\nObservación (by Ditox): ${observationType} ${obsEmoji}`;
     } else {
         const { getPeruTime } = require('./utils/helpers');
 
@@ -576,15 +576,15 @@ app.get('/', (req, res) => {
                         </li>
                         <li class="bg-blue-900/20 p-3 rounded-lg border border-blue-500/30">
                             <strong class="text-blue-400 block mb-1">⚡ En curso...:</strong> 
-                            El movimiento ya se está dando.
+                            El movimiento ya se está dando, si estás dentro, disfruta; de lo contrario, espera a que se calme.
                         </li>
                         <li class="bg-green-900/20 p-3 rounded-lg border border-green-500/30">
                             <strong class="text-green-400 block mb-1">🍏 En terreno de...:</strong> 
-                            El mercado se calmó y probablemente esté a puertas de dar otro movimiento.
+                            El movimiento anterior se calmó y probablemente esté a puertas de dar otro movimiento al sentido contrario, DEJA TU ORDEN LIMIT SIEMPRE (recomendación).
                         </li>
                         <li class="bg-gray-800/50 p-3 rounded-lg border border-gray-600/30">
                             <strong class="text-gray-400 block mb-1">🦀 Indecisión:</strong>
-                            El mercado no habla claro.
+                            El mercado no habla claro. Lo mejor es no operar.
                         </li>
                     </ul>
                 </div>

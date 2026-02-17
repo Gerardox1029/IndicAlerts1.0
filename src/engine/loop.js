@@ -42,10 +42,10 @@ function obtenerEstado(tangente, curveTrend, symbol) {
     if (tangente < -0.10) return { text: "SHORT en curso...", emoji: "🔴", color: "text-red-400", weight: 5 };
 
     if (curveTrend === 'DOWN') {
-        return { text: "En terreno de LONG", emoji: "🍏", color: "text-lime-400", weight: 0, terrain: 'LONG' };
+        return { text: "En terreno de LONG, prepara tu orden LIMIT", emoji: "🍏", color: "text-lime-400", weight: 0, terrain: 'LONG' };
     }
     if (curveTrend === 'UP') {
-        return { text: "En terreno de SHORT", emoji: "🍎", color: "text-orange-400", weight: 0, terrain: 'SHORT' };
+        return { text: "En terreno de SHORT, prepara tu orden LIMIT", emoji: "🍎", color: "text-orange-400", weight: 0, terrain: 'SHORT' };
     }
 
     return { text: "Indecisión (No operar)", emoji: "🦀", color: "text-gray-400", weight: 0 };
@@ -146,7 +146,7 @@ async function checkConsolidatedAlerts() {
                 const dominantPairs = hits.map(h => h.symbol.replace('USDT', '')).join(', ');
                 const dateStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
-                const message = `🚨 ALERTA DE MERCADO DITOX - ${dateStr}\n\nEn terreno de ${type},\nA TRADEAR! 🚀🔥\n\nDominantes: ${dominantPairs}`;
+                const message = `🚨 ALERTA DE MERCADO DITOX - ${dateStr}\n\nEn terreno de ${type},\nPrepara tu orden LIMIT, A TRADEAR! 🚀🔥\n\nDominantes: ${dominantPairs}`;
 
                 const sentMessages = await enviarTelegram(message);
 
@@ -195,6 +195,9 @@ async function procesarMercado() {
     terrainAlertsTracker.LONG.splice(0, terrainAlertsTracker.LONG.length, ...longList);
     terrainAlertsTracker.SHORT.splice(0, terrainAlertsTracker.SHORT.length, ...shortList);
 
+    let largeCapsLongCount = 0;
+    let largeCapsShortCount = 0;
+
     for (const symbol of SYMBOLS) {
         for (const interval of INTERVALS) {
             await new Promise(r => setTimeout(r, REQUEST_DELAY_MS));
@@ -210,8 +213,14 @@ async function procesarMercado() {
             const estadoInfo = obtenerEstado(indicadores.tangente, indicadores.curveTrend, symbol);
 
             totalWeight += estadoInfo.weight || 0;
-            if (estadoInfo.terrain === 'LONG') longTerrainCount++;
-            if (estadoInfo.terrain === 'SHORT') shortTerrainCount++;
+            if (estadoInfo.terrain === 'LONG') {
+                longTerrainCount++;
+                if (CATEGORIES['Large Caps'].includes(symbol)) largeCapsLongCount++;
+            }
+            if (estadoInfo.terrain === 'SHORT') {
+                shortTerrainCount++;
+                if (CATEGORIES['Large Caps'].includes(symbol)) largeCapsShortCount++;
+            }
 
             const key = `${symbol}_${interval}`;
             if (!estadoAlertas[key]) estadoAlertas[key] = {};
@@ -289,14 +298,23 @@ async function procesarMercado() {
     const maxPossibleWeight = SYMBOLS.length * 10;
     marketSummary.rocketAngle = (totalWeight / maxPossibleWeight) * 90;
 
-    if (longTerrainCount > 0 || shortTerrainCount > 0) {
+    // Lógica General: Requiere AL MENOS 3 Large Caps en terreno
+    if (largeCapsLongCount >= 3) {
         const totalTerrain = longTerrainCount + shortTerrainCount;
+        const greenRatio = longTerrainCount / (totalTerrain || 1); // Avoid division by zero
+        const red = Math.floor(255 * (1 - greenRatio));
+        const green = Math.floor(255 * greenRatio);
+        marketSummary.rocketColor = `rgb(${red}, ${green}, 0)`;
+        marketSummary.terrainNote = "En terreno de LONG 🚀";
+    } else if (largeCapsShortCount >= 3) {
+        const totalTerrain = longTerrainCount + shortTerrainCount || 1;
         const greenRatio = longTerrainCount / totalTerrain;
         const red = Math.floor(255 * (1 - greenRatio));
         const green = Math.floor(255 * greenRatio);
         marketSummary.rocketColor = `rgb(${red}, ${green}, 0)`;
-        marketSummary.terrainNote = longTerrainCount >= shortTerrainCount ? "En terreno de LONG 🚀" : "En terreno de SHORT 🔻";
+        marketSummary.terrainNote = "En terreno de SHORT 🔻";
     } else {
+        // Fallback si no hay suficientes Large Caps
         marketSummary.rocketColor = 'rgb(156, 163, 175)';
         marketSummary.terrainNote = "Indecisión (No operar) ⚖️";
     }
