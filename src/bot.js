@@ -519,7 +519,7 @@ By Ditox🔮
         if (waitingForNickname.has(chatId)) {
             const nickname = msg.text.trim().substring(0, 20);
             saveUser(chatId, nickname);
-            bot.sendMessage(chatId, `✅ ¡Perfecto! Te hemos guardado como <b>${nickname}</b>. Ya puedes recibir alertas y usar comandos como /reportALL o /reportBTC para monitorear el estado crypto. \nExplora el PANEL de IndicAlerts aquí: https://indicdtx--indicalerts-ditox-v1--tcggpbtpgkpk.code.run/`, { parse_mode: 'HTML' });
+            bot.sendMessage(chatId, `✅ ¡Perfecto! Te hemos guardado como <b>${nickname}</b>. Ya puedes recibir alertas y usar comandos como /reportALL o /reportBTC para monitorear el estado crypto. \n\n🧐Ditox es el que mejor arma trades con mis alertas, únete a su grupo privado de señales aquí: https://t.me/+cDnjTS4zvoxkMDU5 \n\n🔎Explora el PANEL de IndicAlerts aquí: https://indicdtx--indicalerts-ditox-v1--tcggpbtpgkpk.code.run/`, { parse_mode: 'HTML' });
             waitingForNickname.delete(chatId);
             return;
         }
