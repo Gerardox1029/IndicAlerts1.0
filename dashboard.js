@@ -23,7 +23,7 @@ document.addEventListener('click', (e) => {
     }
 });
 
-function openReviewModal(symbol, price, status, emoji, entryType, entryPrice) {
+function openReviewModal(symbol, price, status, emoji, entryType, entryPrice, macroForce) {
     document.getElementById('review-symbol').textContent = symbol;
     document.getElementById('review-price').textContent = price;
     document.getElementById('review-status').textContent = status;
@@ -38,6 +38,20 @@ function openReviewModal(symbol, price, status, emoji, entryType, entryPrice) {
     } else {
         entryContainer.classList.add('hidden');
         entryText.textContent = '';
+    }
+
+    const macroContainer = document.getElementById('review-macro-container');
+    const macroTextEl = document.getElementById('review-macro');
+    if (macroContainer && macroTextEl) {
+        if (macroForce) {
+            macroContainer.classList.remove('hidden');
+            macroTextEl.textContent = macroForce;
+            macroTextEl.className = 'text-lg font-bold ' +
+                (macroForce === 'Alcista' ? 'text-green-400 animate-light-waves' :
+                    macroForce === 'Bajista' ? 'text-red-400 animate-light-waves' : 'text-gray-400');
+        } else {
+            macroContainer.classList.add('hidden');
+        }
     }
 
     document.getElementById('modal-review').showModal();
@@ -74,12 +88,13 @@ async function fetchDashboardData() {
                 const statusEmoji = alertState.currentStateEmoji || '⏳';
                 const statusText = alertState.currentStateText || 'Esperando datos...';
                 const macroStatus = alertState.macroStatus || '';
+                const macroForce = alertState.macroForce || 'NEUTRAL';
 
                 card.setAttribute('data-price', price);
-                card.setAttribute('data-status', statusText + ' ' + statusEmoji);
+                card.setAttribute('data-status', 'Estado: ' + statusText + ' ' + statusEmoji);
                 card.querySelector('p.text-gray-400').textContent = price;
                 card.querySelector('.text-3xl').textContent = statusEmoji;
-                card.querySelector('.relative.z-10.mb-6 p').textContent = statusText;
+                card.querySelector('.relative.z-10.mb-6 p').textContent = 'Estado: ' + statusText;
 
                 // Macro Status Update
                 let macroEl = card.querySelector('.macro-status');
@@ -92,6 +107,22 @@ async function fetchDashboardData() {
                 macroEl.className = 'macro-status text-xs font-bold mt-1 ' +
                     (macroStatus.includes('🚀') ? 'text-green-400' :
                         macroStatus.includes('🔻') ? 'text-red-400' : 'text-yellow-500');
+
+                // Macro Force Update
+                let mfEl = card.querySelector('.macro-force');
+                if (!mfEl) {
+                    mfEl = document.createElement('p');
+                    card.querySelector('.relative.z-10.mb-6').appendChild(mfEl);
+                }
+
+                let mfClass = 'macro-force text-sm font-bold mt-2 ';
+                if (macroForce === 'ALCISTA') mfClass += 'text-green-400 animate-light-waves';
+                else if (macroForce === 'BAJISTA') mfClass += 'text-red-400 animate-light-waves';
+                else mfClass += 'text-gray-400';
+
+                mfEl.className = mfClass;
+                const mfText = macroForce.charAt(0).toUpperCase() + macroForce.slice(1).toLowerCase();
+                mfEl.textContent = 'Macro (4h): ' + mfText;
             }
         });
 
@@ -131,6 +162,7 @@ async function fetchDashboardData() {
 
                     return `
                     <tr class="border-b border-gray-700/50 hover:bg-white/5 transition-colors">
+                        <td class="py-4 px-6 text-gray-400 font-mono text-xs">${new Date(h.time).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}</td>
                         <td class="py-4 px-6 text-gray-400 font-mono text-xs">${new Date(h.time).toLocaleTimeString()}</td>
                         <td class="py-4 px-6 text-blue-300 font-bold">${h.symbol}</td>
                         <td class="py-4 px-6 text-gray-400 text-xs">${h.interval}</td>

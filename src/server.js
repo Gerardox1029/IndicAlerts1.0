@@ -250,6 +250,14 @@ app.get('/', (req, res) => {
         const statusText = estado.currentStateText || 'Esperando datos...';
         const statusEmoji = estado.currentStateEmoji || '⏳';
 
+        // Add macroForce initialization
+        const macroForce = estado.macroForce || 'NEUTRAL';
+        let mfClass = 'macro-force text-sm font-bold mt-2 ';
+        if (macroForce === 'ALCISTA') mfClass += 'text-green-400 animate-light-waves';
+        else if (macroForce === 'BAJISTA') mfClass += 'text-red-400 animate-light-waves';
+        else mfClass += 'text-gray-400';
+        const mfText = macroForce.charAt(0).toUpperCase() + macroForce.slice(1).toLowerCase();
+
         // REMOVED ENTRY TICK UI LOGIC
         const lastEntryInfo = '';
 
@@ -266,11 +274,12 @@ app.get('/', (req, res) => {
                 </div>
                 
                 <div class="relative z-10 mb-6">
-                    <p class="text-sm font-medium text-gray-300">${statusText}</p>
+                    <p class="text-sm font-medium text-gray-300">Estado: ${statusText}</p>
+                    <p class="${mfClass}">Macro: ${mfText}</p>
                     ${lastEntryInfo}
                 </div>
 
-                <button onclick="openReviewModal('${s}', '${price}', '${statusText}', '${statusEmoji}', '${estado.lastEntryType || ''}')" 
+                <button onclick="openReviewModal('${s}', '${price}', '${statusText}', '${statusEmoji}', '${estado.lastEntryType || ''}', '', '${mfText}')" 
                     class="relative z-10 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-2 px-4 rounded-xl shadow-lg hover:shadow-blue-500/30 transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 text-sm">
                     Revisar
                 </button>
@@ -302,6 +311,7 @@ app.get('/', (req, res) => {
 
         return `
         <tr class="border-b border-gray-700/50 hover:bg-white/5 transition-colors">
+            <td class="py-4 px-6 text-gray-400 font-mono text-xs">${new Date(h.time).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}</td>
             <td class="py-4 px-6 text-gray-400 font-mono text-xs">${new Date(h.time).toLocaleTimeString()}</td>
             <td class="py-4 px-6 text-blue-300 font-bold">${h.symbol}</td>
             <td class="py-4 px-6 text-gray-400 text-xs">${h.interval}</td>
@@ -336,7 +346,16 @@ app.get('/', (req, res) => {
             theme: {
                 extend: {
                     fontFamily: { sans: ['Outfit', 'sans-serif'] },
-                    animation: { 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                    animation: { 
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'light-waves': 'lightWaves 2s ease-in-out infinite'
+                    },
+                    keyframes: {
+                        lightWaves: {
+                            '0%, 100%': { filter: 'drop-shadow(0 0 5px currentColor)', opacity: '0.8' },
+                            '50%': { filter: 'drop-shadow(0 0 15px currentColor)', opacity: '1' }
+                        }
+                    }
                 }
             }
         }
@@ -509,6 +528,7 @@ app.get('/', (req, res) => {
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-900/50 text-gray-400 text-xs uppercase tracking-wider">
+                                <th class="py-4 px-6 font-semibold">Fecha</th>
                                 <th class="py-4 px-6 font-semibold">Hora</th>
                                 <th class="py-4 px-6 font-semibold">Par</th>
                                 <th class="py-4 px-6 font-semibold">TF</th>
@@ -628,6 +648,11 @@ app.get('/', (req, res) => {
                         <p id="review-status" class="text-sm font-bold text-white leading-tight"></p>
                     </div>
                 </div>
+            </div>
+
+            <div id="review-macro-container" class="bg-slate-800/50 rounded-2xl p-4 mb-6 border border-slate-700 text-center hidden">
+                 <p class="text-xs text-slate-400 uppercase">Fuerza Macro (4h)</p>
+                 <p id="review-macro" class="text-lg font-bold text-white"></p>
             </div>
 
             <div id="review-entry-container" class="mt-4 p-4 rounded-2xl bg-purple-900/20 border border-purple-500/30 hidden">

@@ -264,6 +264,8 @@ async function procesarMercado() {
                 estadoAlertas[key].macroStatus = "";
             }
 
+            estadoAlertas[key].macroForce = macroTrend;
+
             const result = evaluarAlertas(symbol, interval, indicadores, lastCandleTime, highs, lows, macroTrend);
 
             if (result && result.signal) {
