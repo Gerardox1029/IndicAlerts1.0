@@ -258,8 +258,11 @@ app.get('/', (req, res) => {
         else mfClass += 'text-gray-400';
         const mfText = macroForce.charAt(0).toUpperCase() + macroForce.slice(1).toLowerCase();
 
-        // REMOVED ENTRY TICK UI LOGIC
-        const lastEntryInfo = '';
+        // TICK UI LOGIC
+        let lastEntryInfo = '';
+        if (estado.tick) {
+            lastEntryInfo = `<p class="mt-2 text-sm font-bold bg-yellow-900/30 text-yellow-400 p-2 rounded-lg border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.1)] animate-pulse-slow">🎯 Posible entrada AL TICK: <span class="font-mono text-white">$${estado.tick}</span></p>`;
+        }
 
         return `
             <div data-symbol="${s}" class="crypto-card group relative bg-gray-900/50 backdrop-blur-xl rounded-3xl p-6 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10 overflow-hidden">
@@ -361,7 +364,43 @@ app.get('/', (req, res) => {
         }
     </script>
     <style>
-        body { background: #0f111a; background-image: radial-gradient(circle at 15% 50%, rgba(76, 29, 149, 0.1), transparent 25%), radial-gradient(circle at 85% 30%, rgba(37, 99, 235, 0.1), transparent 25%); }
+        /* Futuristic Background */
+        body {
+            background-color: #060913;
+            background-image: 
+                radial-gradient(circle at top left, rgba(76, 29, 149, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.15) 0%, transparent 40%);
+            position: relative;
+        }
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            width: 800px;
+            height: 800px;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.4;
+            z-index: -1;
+            pointer-events: none;
+            animation: moveBlobs 25s infinite alternate ease-in-out;
+        }
+        body::before {
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.3), transparent 70%);
+            top: -200px;
+            left: -200px;
+            animation-delay: 0s;
+        }
+        body::after {
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.3), transparent 70%);
+            bottom: -200px;
+            right: -200px;
+            animation-delay: -5s;
+        }
+        @keyframes moveBlobs {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(15vw, 10vh) scale(1.1); }
+            100% { transform: translate(-10vw, 15vh) scale(0.9); }
+        }
         dialog::backdrop { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
         dialog[open] { animation: zoomIn 0.2s ease-out; }
         @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }

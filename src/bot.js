@@ -14,7 +14,7 @@ const {
 const state = require('./services/state');
 const { saveUser, Sticker, Audio } = require('./db/mongo');
 const { fetchData } = require('./api/binance');
-const { calcularIndicadores } = require('./engine/indicators');
+const { calcularIndicadores, calcularTICK } = require('./engine/indicators');
 const { getPeruTime, formatPrice } = require('./utils/helpers');
 // dateStr removed - now using getPeruTime()
 
@@ -358,11 +358,14 @@ function setupListeners() {
         const promises = largeCaps.map(async (s) => {
             const d = await fetchData(s, '4h');
             if (!d) return 'NEUTRAL';
-            const ind = calcularIndicadores(d.closes, d.highs, d.lows);
-            if (ind && ind.tangentsHistory && ind.tangentsHistory.length >= 3) {
-                const [t0, t1, t2] = ind.tangentsHistory;
-                if (t0 > 0 && t1 > 0 && t2 > 0) return 'ALCISTA';
-                if (t0 < 0 && t1 < 0 && t2 < 0) return 'BAJISTA';
+            const ind = calcularIndicadores(d.closes, d.highs, d.lows, 22, 22, 10);
+            if (ind && ind.tangentsHistory && ind.tangentsHistory.length > 0) {
+                const validTangents = ind.tangentsHistory.filter(t => typeof t === 'number' && !isNaN(t));
+                if (validTangents.length > 0) {
+                    const avg = validTangents.reduce((acc, val) => acc + val, 0) / validTangents.length;
+                    if (avg > 0.20) return 'ALCISTA';
+                    if (avg < -0.20) return 'BAJISTA';
+                }
             }
             return 'NEUTRAL';
         });
@@ -414,7 +417,7 @@ function setupListeners() {
         const marketData = await fetchData(symbol, interval, 100);
 
         if (marketData) {
-            const indicadores = calcularIndicadores(marketData.closes, marketData.highs, marketData.lows);
+            const indicadores = calcularIndicadores(marketData.closes, marketData.highs, marketData.lows, 7, 7, 7);
             if (indicadores) {
                 const { obtenerEstado } = require('./engine/loop');
 
@@ -430,16 +433,25 @@ function setupListeners() {
                 let macroTrend = 'NEUTRAL';
                 const data4h = await fetchData(symbol, '4h');
                 if (data4h) {
-                    const ind4h = calcularIndicadores(data4h.closes, data4h.highs, data4h.lows);
-                    if (ind4h && ind4h.tangentsHistory && ind4h.tangentsHistory.length >= 3) {
-                        const [t0, t1, t2] = ind4h.tangentsHistory;
-                        if (t0 > 0 && t1 > 0 && t2 > 0) macroTrend = 'ALCISTA';
-                        else if (t0 < 0 && t1 < 0 && t2 < 0) macroTrend = 'BAJISTA';
+                    const ind4h = calcularIndicadores(data4h.closes, data4h.highs, data4h.lows, 22, 22, 10);
+                    if (ind4h && ind4h.tangentsHistory && ind4h.tangentsHistory.length > 0) {
+                        const validTangents = ind4h.tangentsHistory.filter(t => typeof t === 'number' && !isNaN(t));
+                        if (validTangents.length > 0) {
+                            const avg = validTangents.reduce((acc, val) => acc + val, 0) / validTangents.length;
+                            if (avg > 0.20) macroTrend = 'ALCISTA';
+                            else if (avg < -0.20) macroTrend = 'BAJISTA';
+                        }
                     }
                 }
                 const macroText = macroTrend === 'ALCISTA' ? "<b>Fuerza macro (4h):</b> Alcista 🚀" :
                     macroTrend === 'BAJISTA' ? "<b>Fuerza macro (4h):</b> Bajista 🔻" :
                         "<b>Fuerza macro (4h):</b> Neutral ⚖️";
+
+                let tickValueStr = "";
+                if (estadoInfo.terrain) {
+                    const tickValue = calcularTICK(marketData.highs, marketData.lows, indicadores.currentPrice, estadoInfo.terrain);
+                    if (tickValue) tickValueStr = `\n🎯 <b>Posible TICK:</b> $${tickValue}`;
+                }
 
                 let reportMsg = `✍️ REPORTE MANUAL
                 
@@ -447,7 +459,7 @@ function setupListeners() {
 
 💰 <b>Precio:</b> $${indicadores.currentPrice}
 📸 <b>Estado:</b> ${estadoInfo.text} ${estadoInfo.emoji}
-🪐 ${macroText}
+🪐 ${macroText}${tickValueStr}
 
 By Ditox🔮
 `;
@@ -464,6 +476,41 @@ By Ditox🔮
             }
         } else {
             bot.sendMessage(chatId, `❌ Error obteniendo datos de ${symbol}`, { message_thread_id: threadId });
+        }
+    });
+
+    // /tickS or /tickL
+    bot.onText(/\/tick(s|l)([a-zA-Z0-9]+)/i, async (msg, match) => {
+        const chatId = msg.chat.id;
+        const threadId = msg.message_thread_id;
+        const terrain = match[1].toUpperCase() === 'S' ? 'SHORT' : 'LONG';
+        let symbol = match[2].trim().toUpperCase();
+
+        if (!symbol.includes('USDT')) {
+            if (symbol === 'RNDR') symbol = 'RENDERUSDT';
+            else symbol += 'USDT';
+        }
+
+        if (!SYMBOLS.includes(symbol)) {
+            bot.sendMessage(chatId, `⚠️ Símbolo no monitoreado: ${symbol}`, { message_thread_id: threadId });
+            return;
+        }
+
+        bot.sendMessage(chatId, `⏳ Calculando TICK para ${symbol} en terreno de ${terrain}...`, { message_thread_id: threadId });
+
+        const marketData = await fetchData(symbol, '2h', 100);
+        if (!marketData) {
+            bot.sendMessage(chatId, `❌ Error obteniendo datos para ${symbol}`, { message_thread_id: threadId });
+            return;
+        }
+
+        const currentPrice = marketData.closes[marketData.closes.length - 1];
+        const tickValue = calcularTICK(marketData.highs, marketData.lows, currentPrice, terrain);
+
+        if (tickValue) {
+            bot.sendMessage(chatId, `🎯 <b>Posible TICK (${terrain}):</b> $${tickValue}\n💎 <b>Par:</b> ${symbol} (2h)`, { message_thread_id: threadId, parse_mode: 'HTML' });
+        } else {
+            bot.sendMessage(chatId, `❌ No se pudo calcular el TICK para ${symbol}`, { message_thread_id: threadId });
         }
     });
 

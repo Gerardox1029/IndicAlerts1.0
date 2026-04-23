@@ -7,7 +7,7 @@ const {
 } = require('../config');
 const state = require('../services/state');
 const { fetchData } = require('../api/binance');
-const { calcularIndicadores } = require('./indicators');
+const { calcularIndicadores, calcularTICK } = require('./indicators');
 const { enviarTelegram } = require('../bot');
 const { formatPrice } = require('../utils/helpers');
 
@@ -206,11 +206,17 @@ async function procesarMercado() {
             if (!marketData) continue;
 
             const { closes, highs, lows, closeTimes } = marketData;
-            const indicadores = calcularIndicadores(closes, highs, lows);
+            const indicadores = calcularIndicadores(closes, highs, lows, 7, 7, 7);
             if (!indicadores) continue;
 
             const lastCandleTime = closeTimes[closeTimes.length - 1];
             const estadoInfo = obtenerEstado(indicadores.tangente, indicadores.curveTrend, symbol);
+
+            // TICK Calculation if in terrain
+            let tickValue = null;
+            if (estadoInfo.terrain) {
+                tickValue = calcularTICK(highs, lows, indicadores.currentPrice, estadoInfo.terrain);
+            }
 
             totalWeight += estadoInfo.weight || 0;
             if (estadoInfo.terrain === 'LONG') {
@@ -237,12 +243,17 @@ async function procesarMercado() {
                 try {
                     const data4h = await fetchData(symbol, '4h');
                     if (data4h) {
-                        const ind4h = calcularIndicadores(data4h.closes, data4h.highs, data4h.lows);
-                        if (ind4h && ind4h.tangentsHistory && ind4h.tangentsHistory.length >= 3) {
-                            // Evaluar últimas 3 velas (t0, t1, t2)
-                            const [t0, t1, t2] = ind4h.tangentsHistory;
-                            if (t0 > 0 && t1 > 0 && t2 > 0) macroTrend = 'ALCISTA';
-                            else if (t0 < 0 && t1 < 0 && t2 < 0) macroTrend = 'BAJISTA';
+                        const ind4h = calcularIndicadores(data4h.closes, data4h.highs, data4h.lows, 22, 22, 10);
+                        if (ind4h && ind4h.tangentsHistory && ind4h.tangentsHistory.length > 0) {
+                            // Evaluar promedio de últimas 10 pendientes
+                            const validTangents = ind4h.tangentsHistory.filter(t => typeof t === 'number' && !isNaN(t));
+                            if (validTangents.length > 0) {
+                                const sum = validTangents.reduce((acc, val) => acc + val, 0);
+                                const avg = sum / validTangents.length;
+                                
+                                if (avg > 0.20) macroTrend = 'ALCISTA';
+                                else if (avg < -0.20) macroTrend = 'BAJISTA';
+                            }
                         }
                     }
                 } catch (e) {
@@ -265,18 +276,21 @@ async function procesarMercado() {
             }
 
             estadoAlertas[key].macroForce = macroTrend;
+            estadoAlertas[key].tick = tickValue; // Guardamos TICK en estado
 
             const result = evaluarAlertas(symbol, interval, indicadores, lastCandleTime, highs, lows, macroTrend);
 
             if (result && result.signal) {
                 const { signal } = result;
 
-
-
                 const macroText = macroTrend === 'ALCISTA' ? "<b>Fuerza macro (4h):</b> Alcista 🚀" :
                     macroTrend === 'BAJISTA' ? "<b>Fuerza macro (4h):</b> Bajista 🔻" : "";
 
                 let message = `🚀 ALERTA DITOX\n\n 💎 <b>${symbol} (${interval})</b>\n\n💰 <b>Precio:</b> $${indicadores.currentPrice}\n📸 <b>Estado:</b> ${estadoInfo.text} ${estadoInfo.emoji}\n🪐 ${macroText}`;
+                
+                if (tickValue) {
+                    message += `\n🎯 <b>Posible TICK:</b> $${tickValue}`;
+                }
 
                 const sentMessages = await enviarTelegram(message, symbol);
 
