@@ -536,7 +536,43 @@ By Ditox🔮
         const type = `${match[2].toUpperCase()}_${match[1].toUpperCase()}`;
         await simulateSignalEffect('BTCUSDT', type, { updatePanel: true });
         bot.sendMessage(msg.chat.id, `✅ Panel simulado como ${type}.`);
+
+
     });
+
+
+    bot.onText(/\/ayuda/i, async (msg) => {
+        const chatId = msg.chat.id;
+        const threadId = msg.message_thread_id;
+
+        const comandos = `
+<b>🤖 GUÍA DE COMANDOS DITOX</b>
+
+🔎 <b><u>REPORTES</u></b>
+🔸 <code>/reportALL</code> - Reporte general de mercado
+🔸 <code>/report [Moneda]</code> - Análisis individual
+<i>Ejemplo:</i> <code>/report BTC</code> 👉 "Quiero saber cómo va BTC"
+
+🎯 <b><u>ENTRADAS AL TICK</u></b>
+🔸 <code>/tick[L/S][Moneda]</code> - Calcula entrada exacta
+<i>Ejemplo:</i> <code>/tickL BTC</code> 👉 "Dame el TICK de un LONG en BTC"
+<i>Ejemplo:</i> <code>/tickS ETH</code> 👉 "Dame el TICK de un SHORT en ETH"
+
+🖥️ <b><u>SISTEMA</u></b>
+🔸 <code>/panel</code> - Enlace al Dashboard en vivo
+<i>Ejemplo:</i> <code>/panel</code> 👉 "Dame el enlace al Panel"
+
+🤡 <b><u>ENTRETENIMIENTO</u></b>
+🔸 <code>/alsison</code> - Audio secreto 1
+🔸 <code>/reportAlfaroMuerdeAlmohadas</code> - Audio secreto 2
+
+<i>¡Mantente siempre alerta con IndicAlerts!</i> 🚀💎
+`;
+
+        await bot.sendMessage(chatId, comandos, { message_thread_id: threadId, parse_mode: 'HTML' });
+    });
+
+
 
     // Capture everything
     bot.on('message', (msg) => {

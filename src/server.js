@@ -364,42 +364,57 @@ app.get('/', (req, res) => {
         }
     </script>
     <style>
-        /* Futuristic Background */
+        /* Space Moving Background */
         body {
-            background-color: #060913;
-            background-image: 
-                radial-gradient(circle at top left, rgba(76, 29, 149, 0.15) 0%, transparent 40%),
-                radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.15) 0%, transparent 40%);
+            background-color: #000;
             position: relative;
+            overflow-x: hidden;
         }
-        body::before, body::after {
+        body::before, body::after, .stars-layer {
             content: '';
             position: fixed;
-            width: 800px;
-            height: 800px;
-            border-radius: 50%;
-            filter: blur(100px);
-            opacity: 0.4;
+            top: 0; left: 0; right: 0; bottom: 0;
             z-index: -1;
             pointer-events: none;
-            animation: moveBlobs 25s infinite alternate ease-in-out;
+            background: transparent;
         }
         body::before {
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.3), transparent 70%);
-            top: -200px;
-            left: -200px;
-            animation-delay: 0s;
+            background-image: 
+                radial-gradient(1.5px 1.5px at 20px 30px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 40px 70px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 50px 160px, #ddd, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 90px 40px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 130px 80px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 160px 120px, #ddd, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            animation: moveStars 50s linear infinite;
+            opacity: 0.8;
         }
         body::after {
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.3), transparent 70%);
-            bottom: -200px;
-            right: -200px;
-            animation-delay: -5s;
+            background-image: 
+                radial-gradient(2px 2px at 10px 10px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 150px 150px, #ddd, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 60px 90px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 180px 40px, #eee, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 300px 300px;
+            animation: moveStars 100s linear infinite;
+            opacity: 0.6;
         }
-        @keyframes moveBlobs {
-            0% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(15vw, 10vh) scale(1.1); }
-            100% { transform: translate(-10vw, 15vh) scale(0.9); }
+        .stars-layer {
+            background-image: 
+                radial-gradient(3px 3px at 50px 50px, #fff, rgba(0,0,0,0)),
+                radial-gradient(3px 3px at 100px 150px, #fff, rgba(0,0,0,0)),
+                radial-gradient(3px 3px at 200px 80px, #fff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 400px 400px;
+            animation: moveStars 150s linear infinite;
+            opacity: 0.4;
+        }
+        @keyframes moveStars {
+            from { transform: translateY(0); }
+            to { transform: translateY(-1000px); }
         }
         dialog::backdrop { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
         dialog[open] { animation: zoomIn 0.2s ease-out; }
@@ -429,6 +444,7 @@ app.get('/', (req, res) => {
     </style>
 </head>
 <body class="text-gray-200 min-h-screen p-4 md:p-8">
+    <div class="stars-layer"></div>
 
     <div class="max-w-7xl mx-auto animate-fadeInUp">
         
