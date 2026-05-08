@@ -4,7 +4,8 @@ const path = require('path');
 const {
     PORT,
     CATEGORIES,
-    MONGODB_URI
+    MONGODB_URI,
+    ADMIN_PASSWORD
 } = require('./config');
 const state = require('./services/state');
 const { saveUserToMongo, User } = require('./db/mongo');
@@ -53,7 +54,7 @@ app.get('/simulate-triple-terrain', async (req, res) => {
 // Admin: Enviar mensaje personalizado
 app.post('/admin/send-direct-message', async (req, res) => {
     const { password, userId, message } = req.body;
-    if (password !== 'awd ') return res.status(403).json({ success: false });
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
 
     try {
         const bot = getBot();
@@ -68,7 +69,7 @@ app.post('/admin/send-direct-message', async (req, res) => {
 app.post('/admin/update-signal', async (req, res) => {
     const { password, signalId, observationType } = req.body;
 
-    if (password !== 'awd ') {
+    if (password !== ADMIN_PASSWORD) {
         return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
     }
 
@@ -144,7 +145,7 @@ app.get('/admin/users', (req, res) => {
 // Admin: Actualizar preferencias de usuario
 app.post('/admin/update-user-prefs', async (req, res) => {
     const { password, userId, preferences } = req.body;
-    if (password !== 'awd ') return res.status(403).json({ success: false });
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
 
     if (userDatabase[userId]) {
         userDatabase[userId].preferences = preferences;
@@ -159,7 +160,7 @@ app.post('/admin/update-user-prefs', async (req, res) => {
 // Admin: Eliminar usuario
 app.post('/admin/delete-user', async (req, res) => {
     const { password, userId } = req.body;
-    if (password !== 'awd ') return res.status(403).json({ success: false });
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
 
     if (userDatabase[userId]) {
         const idToDelete = userDatabase[userId].id;
@@ -180,7 +181,7 @@ app.post('/admin/delete-user', async (req, res) => {
 // Admin: Simular alerta general para un usuario específico
 app.post('/admin/simulate-user-alert', async (req, res) => {
     const { password, userId } = req.body;
-    if (password !== 'awd ') return res.status(403).json({ success: false });
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
 
     const user = userDatabase[userId];
     if (user) {
@@ -199,7 +200,7 @@ app.post('/admin/simulate-user-alert', async (req, res) => {
 // Admin: System Switch (Active/Off)
 app.post('/admin/system-switch', (req, res) => {
     const { password, active } = req.body;
-    if (password !== 'awd ') return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
 
     state.isSystemActive = active;
 
@@ -210,7 +211,7 @@ app.post('/admin/system-switch', (req, res) => {
 // Admin: Broadcast Message
 app.post('/admin/broadcast-message', async (req, res) => {
     const { password, message } = req.body;
-    if (password !== 'awd ') return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
     if (!message) return res.status(400).json({ success: false, message: 'Empty message' });
 
     try {

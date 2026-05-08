@@ -42,5 +42,6 @@ module.exports = {
     THREAD_ID,
     STICKERS_FILE,
     AUDIOS_FILE,
-    PUBLIC_DIR
+    PUBLIC_DIR,
+    ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'awds '
 };
