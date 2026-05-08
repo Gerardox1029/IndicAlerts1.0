@@ -60,6 +60,45 @@ function calcularIndicadores(closes, highs, lows) {
     };
 }
 
+function calcularTICK(highs, lows, currentPrice, terrain) {
+    if (!highs || !lows || highs.length < 5 || lows.length < 5) return null;
+
+    // Obtener decimales del precio actual para el formateo final
+    const priceStr = currentPrice.toString();
+    const decimals = priceStr.includes('.') ? priceStr.split('.')[1].length : 0;
+
+    // Últimas 5 velas (2h)
+    const last5Highs = highs.slice(-5);
+    const last5Lows = lows.slice(-5);
+
+    let tickValue;
+
+    if (terrain === 'LONG') {
+        const sortedLows = [...last5Lows].sort((a, b) => a - b);
+        const sortedHighs = [...last5Highs].sort((a, b) => b - a);
+
+        const level1 = (sortedLows[0] + sortedLows[1]) / 2; // Promedio 2 mínimos de mecha
+        const level0 = (sortedHighs[0] + sortedHighs[1]) / 2; // Promedio 2 máximos de mecha
+
+        // Retroceso 1.618 hacia abajo
+        tickValue = level0 + 1.618 * (level1 - level0);
+    } else if (terrain === 'SHORT') {
+        const sortedLows = [...last5Lows].sort((a, b) => a - b);
+        const sortedHighs = [...last5Highs].sort((a, b) => b - a);
+
+        const level1 = (sortedHighs[0] + sortedHighs[1]) / 2; // Promedio 2 máximos de mecha
+        const level0 = (sortedLows[0] + sortedLows[1]) / 2; // Promedio 2 mínimos de mecha
+
+        // Retroceso 1.618 hacia arriba
+        tickValue = level0 + 1.618 * (level1 - level0);
+    } else {
+        return null;
+    }
+
+    return tickValue.toFixed(decimals);
+}
+
 module.exports = {
-    calcularIndicadores
+    calcularIndicadores,
+    calcularTICK
 };
