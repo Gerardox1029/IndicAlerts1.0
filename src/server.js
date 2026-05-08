@@ -229,6 +229,36 @@ app.post('/admin/broadcast-message', async (req, res) => {
     }
 });
 
+const { BitacoraTrade } = require('./db/mongo');
+app.get('/api/bitacora', async (req, res) => {
+    try {
+        const trades = await BitacoraTrade.find().sort({ time: -1 }).limit(50);
+        res.json(trades);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/bitacora/sync', async (req, res) => {
+    try {
+        const { syncMexcTrades } = require('./api/mexc');
+        const newTrades = await syncMexcTrades();
+        res.json({ success: true, count: newTrades.length });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.post('/api/bitacora/update', async (req, res) => {
+    try {
+        const { tradeId, updates } = req.body;
+        await BitacoraTrade.findByIdAndUpdate(tradeId, updates);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 // Endpoint API para actualizaciones dinámicas (AJAX)
 // Endpoint API para actualizaciones dinámicas (AJAX)
 app.get('/api/dashboard-data', (req, res) => {
@@ -441,6 +471,21 @@ app.get('/', (req, res) => {
 
         .animate-fadeInUp { animation: fadeInUp 0.8s ease-out forwards; }
         .animate-breathing { animation: breathing 3s infinite ease-in-out; }
+
+        @keyframes floatUp {
+            0% { transform: translateY(100vh) scale(0.5); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(-10vh) scale(1.5); opacity: 0; }
+        }
+        .particle {
+            position: absolute;
+            bottom: -10px;
+            background: white;
+            border-radius: 50%;
+            animation: floatUp linear infinite;
+            opacity: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="text-gray-200 min-h-screen p-4 md:p-8">
@@ -467,6 +512,17 @@ app.get('/', (req, res) => {
                 <div class="h-4 w-px bg-gray-700"></div>
                 <button id="btn-soy-ditox" onclick="toggleDitoxMode()" class="text-sm text-purple-400 hover:text-purple-300 transition-colors bg-purple-900/20 px-3 py-1 rounded border border-purple-500/20">Soy Ditox</button>
                 
+                <!-- API Validity Bar (Admin Only) -->
+                <div id="api-validity-container" class="hidden flex-col gap-1 bg-gray-800/50 p-2 rounded-xl border border-gray-700 w-48">
+                    <div class="flex justify-between text-[10px] font-mono text-gray-400 uppercase">
+                        <span>Vigencia de API sin IP</span>
+                        <span id="api-validity-text" class="text-green-400">29 días</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                        <div id="api-validity-bar" class="bg-blue-500 h-1.5 rounded-full" style="width: 100%"></div>
+                    </div>
+                </div>
+                
                 <!-- Ditox Active Switch (Admin Only) -->
                 <div id="admin-switch-container" class="hidden flex items-center gap-2 bg-gray-800/50 p-2 rounded-xl border border-gray-700">
                     <span class="text-[10px] font-mono text-gray-400 uppercase">Bot:</span>
@@ -482,6 +538,9 @@ app.get('/', (req, res) => {
         <nav id="ditox-navbar" class="hidden mb-8 bg-gray-800/60 backdrop-blur-xl rounded-2xl border border-purple-500/30 p-2 flex justify-center gap-2 shadow-2xl">
             <button onclick="showSection('dashboard')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
                 🚀 Panel del Bot
+            </button>
+            <button onclick="showSection('bitacora')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
+                📔 Bitácora Ditox
             </button>
             <button onclick="showSection('history')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
                 📜 Historial de Señales
@@ -566,6 +625,37 @@ app.get('/', (req, res) => {
                     </div>
                 </section>
             </div>
+
+            <!-- Tips Psicotrading Section -->
+            <section class="mt-16 mb-8 bg-gray-800/40 backdrop-blur-xl rounded-3xl border border-blue-500/20 p-8 shadow-2xl">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-white tracking-tight">Tips de Psicotrading</h2>
+                    <p class="text-blue-400 font-mono text-sm mt-1">By Ditox</p>
+                    <p class="text-gray-400 mt-4 max-w-2xl mx-auto text-sm">
+                        La psicología es el 80% del trading. Evitar el <span class="text-red-400 font-bold">TILT</span> (pérdida del control emocional) es la clave absoluta para alcanzar la rentabilidad consistente. Un trader tranquilo sigue su plan; un trader alterado regala su dinero al mercado.
+                    </p>
+                </div>
+                <div class="grid grid-cols-3 grid-rows-2 gap-6">
+                    <div class="rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:border-blue-500/50 transition-all hover:scale-105 cursor-pointer" onclick="openTipModal('/src/assets/tip1.png')">
+                        <img src="/src/assets/tip1.png" alt="Tip 1" class="w-full h-auto object-cover">
+                    </div>
+                    <div class="rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:border-blue-500/50 transition-all hover:scale-105 cursor-pointer" onclick="openTipModal('/src/assets/tip2.png')">
+                        <img src="/src/assets/tip2.png" alt="Tip 2" class="w-full h-auto object-cover">
+                    </div>
+                    <div class="rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:border-blue-500/50 transition-all hover:scale-105 cursor-pointer" onclick="openTipModal('/src/assets/tip3.png')">
+                        <img src="/src/assets/tip3.png" alt="Tip 3" class="w-full h-auto object-cover">
+                    </div>
+                    <div class="rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:border-blue-500/50 transition-all hover:scale-105 cursor-pointer" onclick="openTipModal('/src/assets/tip4.png')">
+                        <img src="/src/assets/tip4.png" alt="Tip 4" class="w-full h-auto object-cover">
+                    </div>
+                    <div class="rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:border-blue-500/50 transition-all hover:scale-105 cursor-pointer" onclick="openTipModal('/src/assets/tip5.png')">
+                        <img src="/src/assets/tip5.png" alt="Tip 5" class="w-full h-auto object-cover">
+                    </div>
+                    <div class="rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:border-blue-500/50 transition-all hover:scale-105 cursor-pointer" onclick="openTipModal('/src/assets/tip6.png')">
+                        <img src="/src/assets/tip6.png" alt="Tip 6" class="w-full h-auto object-cover">
+                    </div>
+                </div>
+            </section>
         </div>
 
         <!-- SECTION: HISTORY -->
@@ -594,6 +684,40 @@ app.get('/', (req, res) => {
                         </thead>
                         <tbody id="history-table-body" class="text-sm divide-y divide-gray-700/50">
                             ${historyRows.length ? historyRows : '<tr><td colspan="6" class="py-8 text-center text-gray-500 italic">Esperando primeras señales del mercado...</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: BITACORA DITOX (Admin Only) -->
+        <div id="section-bitacora" class="hidden">
+            <div class="bg-gray-800/40 backdrop-blur-xl rounded-3xl border border-purple-500/30 overflow-hidden shadow-2xl p-6">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                            <span>📔</span> Bitácora Ditox
+                        </h2>
+                        <p class="text-gray-400 text-sm mt-1">Registro y análisis psicológico de operaciones en MEXC.</p>
+                    </div>
+                    <button onclick="syncMexcTrades()" id="btn-sync-mexc" class="bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-purple-500/30 transition-all flex items-center gap-2 hover:scale-105">
+                        <span id="sync-icon">🔄</span> Sincronizar Operaciones
+                    </button>
+                </div>
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse min-w-[1200px]">
+                        <thead>
+                            <tr class="bg-gray-900/80 text-gray-300 text-xs uppercase tracking-wider">
+                                <th class="py-4 px-4 font-semibold rounded-tl-xl">Fecha/Par</th>
+                                <th class="py-4 px-4 font-semibold">Operación</th>
+                                <th class="py-4 px-4 font-semibold text-center bg-blue-900/20">Técnico (Híbrido)</th>
+                                <th class="py-4 px-4 font-semibold text-center bg-purple-900/20">Psicología (Default: Sí/No)</th>
+                                <th class="py-4 px-4 font-semibold w-48">Resultados / Reflexión</th>
+                                <th class="py-4 px-4 font-semibold text-center rounded-tr-xl">% Confianza</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bitacora-table-body" class="text-sm divide-y divide-gray-700/50">
+                            <tr><td colspan="6" class="py-8 text-center text-gray-500">Haz clic en "Sincronizar Operaciones" para cargar datos de MEXC.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -734,6 +858,11 @@ app.get('/', (req, res) => {
                 <button onclick="handlePromptConfirm()" class="px-8 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl text-sm font-bold hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all transform active:scale-95 text-white">Confirmar</button>
             </div>
         </div>
+    </dialog>
+
+    <dialog id="modal-tip" class="bg-black/90 w-full h-full max-w-none max-h-none m-0 backdrop:bg-black/90 p-0 border-0 flex items-center justify-center overflow-hidden transition-opacity duration-500 opacity-0 relative" onclick="closeTipModal()">
+        <div id="particles-container" class="absolute inset-0 pointer-events-none"></div>
+        <img id="modal-tip-img" src="" alt="Tip Modal" class="max-w-[90vw] max-h-[90vh] object-contain rounded-2xl shadow-2xl z-10 scale-95 transition-transform duration-500">
     </dialog>
 
     <script>

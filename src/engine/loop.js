@@ -302,6 +302,7 @@ async function procesarMercado() {
                     tangente: indicadores.tangente,
                     sentMessages: sentMessages || [],
                     observation: null,
+                    tick: tickValue,
                     macroText, // Guardar texto macro para reportes admin
                     currentPrice: indicadores.currentPrice, // Guardar precio para reporte admin
                     id: Date.now()

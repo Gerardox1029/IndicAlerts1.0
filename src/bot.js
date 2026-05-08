@@ -558,6 +558,9 @@ By Ditox🔮
 <i>Ejemplo:</i> <code>/tickL BTC</code> 👉 "Dame el TICK de un LONG en BTC"
 <i>Ejemplo:</i> <code>/tickS ETH</code> 👉 "Dame el TICK de un SHORT en ETH"
 
+🧠 <b><u>PSICOTRADING</u></b>
+🔸 <code>/tip1</code> a <code>/tip5</code> - Tips de Psicotrading para evitar el TILT
+
 🖥️ <b><u>SISTEMA</u></b>
 🔸 <code>/panel</code> - Enlace al Dashboard en vivo
 <i>Ejemplo:</i> <code>/panel</code> 👉 "Dame el enlace al Panel"
@@ -572,7 +575,30 @@ By Ditox🔮
         await bot.sendMessage(chatId, comandos, { message_thread_id: threadId, parse_mode: 'HTML' });
     });
 
+    const psicotradingEmojis = ['🧘', '💡', '🌬️', '🌳', '📏', '📊'];
+    for (let i = 1; i <= 6; i++) {
+        bot.onText(new RegExp(`\\/tip${i}`, 'i'), async (msg) => {
+            const chatId = msg.chat.id;
+            const threadId = msg.message_thread_id;
+            const assetPath = path.join(__dirname, 'assets', `tip${i}.png`);
+            if (fs.existsSync(assetPath)) {
+                const randomEmoji = psicotradingEmojis[Math.floor(Math.random() * psicotradingEmojis.length)];
+                await bot.sendPhoto(chatId, fs.createReadStream(assetPath), { 
+                    caption: randomEmoji,
+                    message_thread_id: threadId 
+                });
+            } else {
+                bot.sendMessage(chatId, `❌ Tip ${i} no encontrado.`, { message_thread_id: threadId });
+            }
+        });
+    }
 
+    bot.onText(/\/tips/i, async (msg) => {
+        const chatId = msg.chat.id;
+        const threadId = msg.message_thread_id;
+        const text = `🧘 <b>La psicología es el 80% del trading.</b>\n\nEvitar el <b>TILT</b> <i>(pérdida del control emocional)</i> es la clave absoluta para alcanzar la rentabilidad consistente. Un trader tranquilo sigue su plan; un trader alterado regala su dinero al mercado. 💡📊`;
+        bot.sendMessage(chatId, text, { parse_mode: 'HTML', message_thread_id: threadId });
+    });
 
     // Capture everything
     bot.on('message', (msg) => {

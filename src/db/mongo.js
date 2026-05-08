@@ -23,6 +23,34 @@ const AudioSchema = new mongoose.Schema({
 });
 const Audio = mongoose.model('Audio', AudioSchema);
 
+const BitacoraTradeSchema = new mongoose.Schema({
+    mexcId: { type: String, required: true, unique: true },
+    symbol: String,
+    time: Date,
+    direction: String, // LONG / SHORT
+    size: Number,
+    entryPrice: Number,
+    leverage: Number,
+    // Condiciones Técnicas Híbridas
+    techFavor4h: { type: Boolean, default: false },
+    techFavor2h: { type: Boolean, default: false },
+    techRsiExtremo: { type: Boolean, default: false },
+    techRsiTangente0: { type: Boolean, default: false },
+    techDivRsi: { type: Boolean, default: false },
+    techDivCipher: { type: Boolean, default: false },
+    // Condiciones Psicotrading
+    psiRetroceso: { type: Boolean, default: true },
+    psiImpulsiva: { type: Boolean, default: false },
+    psiPermitio: { type: Boolean, default: true },
+    psiTranquilo: { type: Boolean, default: true },
+    psiIncertidumbre: { type: Boolean, default: false },
+    // Resultados
+    resultadoEstado: { type: String, default: 'Sin entrada' }, // TP, SL, Sin entrada
+    roi: { type: String, default: '' },
+    reflexion: { type: String, default: '' }
+});
+const BitacoraTrade = mongoose.model('BitacoraTrade', BitacoraTradeSchema);
+
 // Conexión a Base de Datos
 function connectDB() {
     if (MONGODB_URI) {
@@ -102,5 +130,6 @@ module.exports = {
     saveUser,
     saveUserToMongo,
     Sticker,
-    Audio
+    Audio,
+    BitacoraTrade
 };

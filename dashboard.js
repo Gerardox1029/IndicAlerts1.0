@@ -174,6 +174,7 @@ async function fetchDashboardData() {
                         </td>
                         <td class="py-4 px-6 text-gray-300 font-mono text-sm">
                             ${h.tangente.toFixed(4)}
+                            ${h.tick ? `<div class="text-xs text-yellow-400 mt-1">🎯 $${h.tick}</div>` : ''}
                         </td>
                         <td class="py-4 px-6 text-gray-400 text-xs ditox-column hidden">
                             ${h.observation || 'Ninguna'}
@@ -297,7 +298,7 @@ function toggleAdminSwitch() {
         fetch('/admin/system-switch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: 'awd ', active: true })
+            body: JSON.stringify({ password: 'awds ', active: true })
         }).catch(console.error);
 
     } else {
@@ -311,18 +312,20 @@ function toggleAdminSwitch() {
         fetch('/admin/system-switch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: 'awd ', active: false })
+            body: JSON.stringify({ password: 'awds ', active: false })
         }).catch(console.error);
     }
 }
 
 function showSection(sectionId) {
     // Hide all sections
-    ['dashboard', 'history', 'users'].forEach(s => {
-        document.getElementById(`section-${s}`).classList.add('hidden');
+    ['dashboard', 'history', 'users', 'bitacora'].forEach(s => {
+        const el = document.getElementById(`section-${s}`);
+        if(el) el.classList.add('hidden');
     });
     // Show target
-    document.getElementById(`section-${sectionId}`).classList.remove('hidden');
+    const target = document.getElementById(`section-${sectionId}`);
+    if(target) target.classList.remove('hidden');
 
     // Update Nav Buttons
     // (Optional visual feedback for active tab)
@@ -333,7 +336,7 @@ function sendGeneralBroadcast() {
         if (!msg) return;
 
         // No password prompt, use soft auth
-        const password = 'awd ';
+        const password = 'awds ';
         fetch('/admin/broadcast-message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -350,7 +353,7 @@ function sendGeneralBroadcast() {
 function toggleDitoxMode() {
     customPrompt("🔑 Contraseña Ditox", async (password) => {
         // Relaxed check: allow 'awd' without space or with extra spaces
-        if (password && password.trim() === 'awd') {
+        if (password && password.trim() === 'awds') {
             console.log("Password correct, enabling Ditox Mode");
             localStorage.setItem('ditoxMode', 'true');
             // User requested NO confirmation message, just enter.
@@ -377,6 +380,12 @@ if (localStorage.getItem('ditoxMode') === 'true') {
 
     const adminSwitch = document.getElementById('admin-switch-container');
     if (adminSwitch) adminSwitch.classList.remove('hidden');
+    
+    const apiValidity = document.getElementById('api-validity-container');
+    if (apiValidity) apiValidity.classList.remove('hidden');
+    if (apiValidity) apiValidity.classList.replace('hidden', 'flex');
+
+    loadBitacoraTrades(); // Load Bitacora data
 
     // Hide "Soy Ditox" button if visible
     const btnSoyDitox = document.getElementById('btn-soy-ditox');
@@ -468,7 +477,7 @@ function updateSignal(signalId) {
     const obs = select.value;
     if (!obs) return customAlert("⚠ Selecciona una observación primero");
 
-    const password = 'awd '; // Soft Auth
+    const password = 'awds '; // Soft Auth
 
     fetch('/admin/update-signal', {
         method: 'POST',
@@ -491,7 +500,7 @@ function toggleUserPref(userId, symbol, isChecked) {
     const newPrefs = Array.from(checkboxes).map(c => c.value);
 
     // Soft auth as requested to improve UX
-    const password = 'awd ';
+    const password = 'awds ';
 
     fetch('/admin/update-user-prefs', {
         method: 'POST',
@@ -512,7 +521,7 @@ function sendPrivateMessage(userId, username) {
     customPrompt(`Mensaje para ${username}`, (msg) => {
         if (!msg) return;
         // No password prompt, use soft auth
-        const password = 'awd ';
+        const password = 'awds ';
         fetch('/admin/send-direct-message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -529,7 +538,7 @@ function sendPrivateMessage(userId, username) {
 function deleteUser(userId) {
     if (!confirm("¿Seguro que deseas eliminar este usuario?")) return;
     // No password prompt, use soft auth
-    const password = 'awd ';
+    const password = 'awds ';
     fetch('/admin/delete-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -547,7 +556,7 @@ function deleteUser(userId) {
 
 function simulateUserAlert(userId) {
     // No password prompt, use soft auth
-    const password = 'awd ';
+    const password = 'awds ';
     fetch('/admin/simulate-user-alert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -557,4 +566,186 @@ function simulateUserAlert(userId) {
         .then(d => {
             if (!d.success) alert("❌ Error: " + d.message);
         });
+}
+
+// --- BITACORA DITOX LOGIC ---
+
+function calculateConfidence(trade) {
+    let score = 0;
+    const total = 11; // 6 tech, 5 psi
+    
+    if (trade.techFavor4h) score++;
+    if (trade.techFavor2h) score++;
+    if (trade.techRsiExtremo) score++;
+    if (trade.techRsiTangente0) score++;
+    if (trade.techDivRsi) score++;
+    if (trade.techDivCipher) score++;
+    
+    // Psicotrading logic: NO adds for impulsiva/incertidumbre
+    if (trade.psiRetroceso) score++;
+    if (!trade.psiImpulsiva) score++; // NO = positive
+    if (trade.psiPermitio) score++;
+    if (trade.psiTranquilo) score++;
+    if (!trade.psiIncertidumbre) score++; // NO = positive
+    
+    return Math.round((score / total) * 100);
+}
+
+async function loadBitacoraTrades() {
+    try {
+        const response = await fetch('/api/bitacora');
+        const trades = await response.json();
+        renderBitacora(trades);
+    } catch (e) {
+        console.error("Error loading bitacora:", e);
+    }
+}
+
+function renderBitacora(trades) {
+    const tbody = document.getElementById('bitacora-table-body');
+    if (trades.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-gray-500">No hay operaciones registradas.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = trades.map(t => {
+        const conf = calculateConfidence(t);
+        const confColor = conf === 100 ? 'text-green-400 font-black drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]' : conf >= 70 ? 'text-blue-400' : conf >= 50 ? 'text-yellow-400' : 'text-red-400';
+        
+        const toggle = (field, label, inverted = false) => `
+            <label class="flex items-center justify-between text-[10px] bg-gray-800/50 p-1.5 rounded-lg border border-gray-700/50 hover:border-purple-500/30 transition-colors cursor-pointer mb-1">
+                <span class="text-gray-300 w-32 truncate">${label}</span>
+                <div class="relative inline-flex items-center">
+                    <input type="checkbox" onchange="updateBitacoraTrade('${t._id}', '${field}', this.checked)" ${t[field] ? 'checked' : ''} class="sr-only peer">
+                    <div class="w-6 h-3 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-[12px] peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-2.5 after:w-2.5 after:transition-all ${inverted ? 'peer-checked:bg-red-500' : 'peer-checked:bg-green-500'}"></div>
+                </div>
+            </label>
+        `;
+
+        return `
+        <tr class="border-b border-gray-700/50 hover:bg-gray-800/20 transition-colors">
+            <td class="py-4 px-4">
+                <div class="font-bold text-blue-300">${t.symbol}</div>
+                <div class="text-[10px] text-gray-500 font-mono">${new Date(t.time).toLocaleString()}</div>
+            </td>
+            <td class="py-4 px-4">
+                <div class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${t.direction === 'LONG' ? 'bg-green-900/40 text-green-400' : 'bg-red-900/40 text-red-400'}">
+                    ${t.direction}
+                </div>
+                <div class="text-[10px] text-gray-300 mt-1">Entrada: $${t.entryPrice || 0}</div>
+                <div class="text-xs text-gray-400 mt-1">Vol: ${t.size}</div>
+                <div class="text-[10px] text-gray-500">Lev: ${t.leverage}x</div>
+            </td>
+            <td class="py-4 px-4 bg-blue-900/5 border-x border-gray-700/30">
+                <div class="grid gap-1">
+                    ${toggle('techFavor4h', 'A favor 4h')}
+                    ${toggle('techFavor2h', 'A favor 2h')}
+                    ${toggle('techRsiExtremo', 'RSI Extremo (>60/<40)')}
+                    ${toggle('techRsiTangente0', 'Tangente 0')}
+                    ${toggle('techDivRsi', 'Div. RSI')}
+                    ${toggle('techDivCipher', 'Div. Cipher+MFI')}
+                </div>
+            </td>
+            <td class="py-4 px-4 bg-purple-900/5 border-r border-gray-700/30">
+                <div class="grid gap-1">
+                    ${toggle('psiRetroceso', 'Esperó retroceso')}
+                    ${toggle('psiImpulsiva', 'Entrada impulsiva', true)}
+                    ${toggle('psiPermitio', 'Mercado permitió')}
+                    ${toggle('psiTranquilo', 'Ánimo tranquilo')}
+                    ${toggle('psiIncertidumbre', 'Incertidumbre fund.', true)}
+                </div>
+            </td>
+            <td class="py-4 px-4">
+                <select onchange="updateBitacoraTrade('${t._id}', 'resultadoEstado', this.value)" class="w-full bg-gray-800 text-[10px] text-white p-1.5 rounded mb-2 border border-gray-700">
+                    <option value="Sin entrada" ${t.resultadoEstado === 'Sin entrada' ? 'selected' : ''}>Sin entrada</option>
+                    <option value="TP" ${t.resultadoEstado === 'TP' ? 'selected' : ''}>TP ✅</option>
+                    <option value="SL" ${t.resultadoEstado === 'SL' ? 'selected' : ''}>SL ❌</option>
+                </select>
+                <input type="text" placeholder="ROI %" value="${t.roi || ''}" onblur="updateBitacoraTrade('${t._id}', 'roi', this.value)" class="w-full bg-gray-800 text-[10px] text-white p-1.5 rounded mb-2 border border-gray-700 text-center">
+                <textarea placeholder="Reflexión..." onblur="updateBitacoraTrade('${t._id}', 'reflexion', this.value)" class="w-full bg-gray-800 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 h-12 resize-none">${t.reflexion || ''}</textarea>
+            </td>
+            <td class="py-4 px-4 text-center">
+                <div class="text-3xl ${confColor}">${conf}%</div>
+                <div class="text-[9px] text-gray-500 uppercase mt-1">Confianza</div>
+            </td>
+        </tr>
+        `;
+    }).join('');
+}
+
+async function syncMexcTrades() {
+    const btn = document.getElementById('btn-sync-mexc');
+    const icon = document.getElementById('sync-icon');
+    if (icon) icon.classList.add('animate-spin');
+    if (btn) btn.disabled = true;
+    
+    try {
+        const res = await fetch('/api/bitacora/sync', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            customAlert(`✅ Sincronización exitosa. ${data.count} operaciones nuevas.`);
+            loadBitacoraTrades();
+        } else {
+            customAlert(`❌ Error: ${data.message}`);
+        }
+    } catch (e) {
+        customAlert("❌ Error de conexión al sincronizar.");
+    } finally {
+        if (icon) icon.classList.remove('animate-spin');
+        if (btn) btn.disabled = false;
+    }
+}
+
+function openTipModal(src) {
+    const modal = document.getElementById('modal-tip');
+    const img = document.getElementById('modal-tip-img');
+    img.src = src;
+    modal.showModal();
+    // Fade in
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        img.classList.remove('scale-95');
+        img.classList.add('scale-100');
+    }, 10);
+    createParticles();
+}
+
+function closeTipModal() {
+    const modal = document.getElementById('modal-tip');
+    const img = document.getElementById('modal-tip-img');
+    modal.classList.add('opacity-0');
+    img.classList.remove('scale-100');
+    img.classList.add('scale-95');
+    setTimeout(() => {
+        modal.close();
+        document.getElementById('particles-container').innerHTML = ''; // clear particles
+    }, 500);
+}
+
+function createParticles() {
+    const container = document.getElementById('particles-container');
+    container.innerHTML = '';
+    for(let i=0; i<30; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle shadow-[0_0_10px_white]';
+        p.style.left = Math.random() * 100 + 'vw';
+        p.style.width = Math.random() * 4 + 2 + 'px';
+        p.style.height = p.style.width;
+        p.style.animationDuration = Math.random() * 3 + 2 + 's';
+        p.style.animationDelay = Math.random() * 2 + 's';
+        container.appendChild(p);
+    }
+}
+
+async function updateBitacoraTrade(tradeId, field, value) {
+    try {
+        await fetch('/api/bitacora/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tradeId, updates: { [field]: value } })
+        });
+        loadBitacoraTrades(); 
+    } catch (e) {
+        console.error("Error updating trade", e);
+    }
 }
