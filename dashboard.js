@@ -298,7 +298,7 @@ function toggleAdminSwitch() {
         fetch('/admin/system-switch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: 'awds ', active: true })
+            body: JSON.stringify({ password: 'awd ', active: true })
         }).catch(console.error);
 
     } else {
@@ -312,7 +312,7 @@ function toggleAdminSwitch() {
         fetch('/admin/system-switch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: 'awds ', active: false })
+            body: JSON.stringify({ password: 'awd ', active: false })
         }).catch(console.error);
     }
 }
@@ -336,7 +336,7 @@ function sendGeneralBroadcast() {
         if (!msg) return;
 
         // No password prompt, use soft auth
-        const password = 'awds ';
+        const password = 'awd ';
         fetch('/admin/broadcast-message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -353,7 +353,7 @@ function sendGeneralBroadcast() {
 function toggleDitoxMode() {
     customPrompt("🔑 Contraseña Ditox", async (password) => {
         // Relaxed check: allow 'awd' without space or with extra spaces
-        if (password && password.trim() === 'awds') {
+        if (password && password.trim() === 'awd') {
             console.log("Password correct, enabling Ditox Mode");
             localStorage.setItem('ditoxMode', 'true');
             // User requested NO confirmation message, just enter.
@@ -477,7 +477,7 @@ function updateSignal(signalId) {
     const obs = select.value;
     if (!obs) return customAlert("⚠ Selecciona una observación primero");
 
-    const password = 'awds '; // Soft Auth
+    const password = 'awd '; // Soft Auth
 
     fetch('/admin/update-signal', {
         method: 'POST',
@@ -500,7 +500,7 @@ function toggleUserPref(userId, symbol, isChecked) {
     const newPrefs = Array.from(checkboxes).map(c => c.value);
 
     // Soft auth as requested to improve UX
-    const password = 'awds ';
+    const password = 'awd ';
 
     fetch('/admin/update-user-prefs', {
         method: 'POST',
@@ -521,7 +521,7 @@ function sendPrivateMessage(userId, username) {
     customPrompt(`Mensaje para ${username}`, (msg) => {
         if (!msg) return;
         // No password prompt, use soft auth
-        const password = 'awds ';
+        const password = 'awd ';
         fetch('/admin/send-direct-message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -538,7 +538,7 @@ function sendPrivateMessage(userId, username) {
 function deleteUser(userId) {
     if (!confirm("¿Seguro que deseas eliminar este usuario?")) return;
     // No password prompt, use soft auth
-    const password = 'awds ';
+    const password = 'awd ';
     fetch('/admin/delete-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -556,7 +556,7 @@ function deleteUser(userId) {
 
 function simulateUserAlert(userId) {
     // No password prompt, use soft auth
-    const password = 'awds ';
+    const password = 'awd ';
     fetch('/admin/simulate-user-alert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
