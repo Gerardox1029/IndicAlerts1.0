@@ -319,7 +319,7 @@ function toggleAdminSwitch() {
 
 function showSection(sectionId) {
     // Hide all sections
-    ['dashboard', 'history', 'users', 'bitacora'].forEach(s => {
+    ['dashboard', 'history', 'users', 'bitacora', 'broadcast'].forEach(s => {
         const el = document.getElementById(`section-${s}`);
         if(el) el.classList.add('hidden');
     });
@@ -470,6 +470,8 @@ if (localStorage.getItem('ditoxMode') === 'true') {
                 `;
             }).join('');
         });
+
+    loadGroupsForBroadcast();
 }
 
 function updateSignal(signalId) {
@@ -748,4 +750,135 @@ async function updateBitacoraTrade(tradeId, field, value) {
     } catch (e) {
         console.error("Error updating trade", e);
     }
+}
+
+// --- BROADCAST GROUPS LOGIC ---
+function loadGroupsForBroadcast() {
+    fetch('/admin/groups')
+        .then(r => r.json())
+        .then(groups => {
+            const container = document.getElementById('groups-list-container');
+            if (groups.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">No hay grupos configurados.</p>';
+                return;
+            }
+            container.innerHTML = groups.map(g => `
+                <label class="flex items-center justify-between p-3 rounded-xl border border-gray-700/50 hover:border-purple-500/40 hover:bg-purple-900/10 transition-all cursor-pointer">
+                    <span class="text-sm font-bold text-gray-300">${g.name}</span>
+                    <div class="relative inline-flex items-center">
+                        <input type="checkbox" class="broadcast-group-chk sr-only peer" value="${g.id}">
+                        <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
+                    </div>
+                </label>
+            `).join('');
+        });
+}
+
+function toggleAllGroups() {
+    const checkboxes = document.querySelectorAll('.broadcast-group-chk');
+    const anyUnchecked = Array.from(checkboxes).some(c => !c.checked);
+    checkboxes.forEach(c => c.checked = anyUnchecked);
+}
+
+function sendGroupBroadcast() {
+    const message = document.getElementById('broadcast-message-text').value;
+    const imgPreviewSrc = document.getElementById('broadcast-image-preview').src;
+    const checkboxes = document.querySelectorAll('.broadcast-group-chk:checked');
+    const selectedGroups = Array.from(checkboxes).map(c => c.value);
+
+    if (selectedGroups.length === 0) {
+        return alert("❌ Debes seleccionar al menos un grupo.");
+    }
+    if (!message.trim() && (!imgPreviewSrc || imgPreviewSrc.endsWith(location.pathname))) {
+        return alert("❌ Debes escribir un mensaje o seleccionar una imagen.");
+    }
+
+    const btn = document.getElementById('btn-send-broadcast-groups');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span>⏳</span> Enviando...';
+    btn.disabled = true;
+
+    const imageBase64 = imgPreviewSrc.startsWith('data:image') ? imgPreviewSrc : null;
+
+    fetch('/admin/broadcast-groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            password: 'awd ',
+            message: message,
+            imageBase64: imageBase64,
+            selectedGroups: selectedGroups
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(`✅ Mensaje enviado con éxito a ${selectedGroups.length} grupos.`);
+            document.getElementById('broadcast-message-text').value = '';
+            const previewContainer = document.getElementById('image-preview-container');
+            const previewImg = document.getElementById('broadcast-image-preview');
+            const fileInput = document.getElementById('broadcast-image');
+            
+            previewImg.src = '';
+            previewContainer.classList.add('hidden');
+            if (fileInput) fileInput.value = '';
+            checkboxes.forEach(c => c.checked = false);
+        } else {
+            alert("❌ Error al enviar: " + data.message);
+        }
+    })
+    .catch(err => {
+        alert("❌ Error de red: " + err.message);
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+
+// --- PASTE (CTRL+V) LOGIC ---
+window.addEventListener('paste', (e) => {
+    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    for (const item of items) {
+        if (item.type.indexOf('image') !== -1) {
+            const blob = item.getAsFile();
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const previewContainer = document.getElementById('image-preview-container');
+                const previewImg = document.getElementById('broadcast-image-preview');
+                const fileInput = document.getElementById('broadcast-image');
+                
+                if (previewImg && previewContainer) {
+                    previewImg.src = evt.target.result;
+                    previewContainer.classList.remove('hidden');
+                    // Clear file input if it had something
+                    if (fileInput) fileInput.value = '';
+                    
+                    // Visual feedback
+                    console.log("Imagen pegada desde el portapapeles");
+                }
+            };
+            reader.readAsDataURL(blob);
+        }
+    }
+});
+
+const broadcastFileInput = document.getElementById('broadcast-image');
+if (broadcastFileInput) {
+    broadcastFileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const previewContainer = document.getElementById('image-preview-container');
+        const previewImg = document.getElementById('broadcast-image-preview');
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                previewImg.src = evt.target.result;
+                previewContainer.classList.remove('hidden');
+            }
+            reader.readAsDataURL(file);
+        } else {
+            previewImg.src = '';
+            previewContainer.classList.add('hidden');
+        }
+    });
 }

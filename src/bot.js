@@ -391,14 +391,14 @@ function setupListeners() {
         }
     });
 
-    // /report [symbol]
-    bot.onText(/\/report(?!\s*ALL\b|\s*AlfaroMuerdeAlmohadas\b)(.+)/i, async (msg, match) => {
-        const chatId = msg.chat.id;
-        const username = resolveChatName(msg);
-        saveUser(chatId, username);
-        const threadId = msg.message_thread_id;
+    // /[symbol]
+    bot.onText(/^\/([a-zA-Z0-9]+)$/i, async (msg, match) => {
         const rawSymbol = match[1].trim().toUpperCase();
-        if (rawSymbol === 'ALL') return;
+        
+        // Ignorar comandos conocidos
+        const ignoredCommands = ['START', 'PANEL', 'ALSISON', 'REPORTALFAROMUERDEALMOHADAS', 'REPORTALL', 'TIPS', 'AYUDA'];
+        if (ignoredCommands.includes(rawSymbol)) return;
+        if (rawSymbol.startsWith('TICK') || rawSymbol.startsWith('TIP') || rawSymbol.startsWith('SIMULATE')) return;
 
         let symbol = rawSymbol;
         if (!symbol.includes('USDT')) {
@@ -407,9 +407,14 @@ function setupListeners() {
         }
 
         if (!SYMBOLS.includes(symbol)) {
-            bot.sendMessage(chatId, `⚠️ Símbolo no monitoreado: ${symbol}`, { message_thread_id: threadId });
+            // No respondemos error para no chocar con otros posibles comandos de otros bots
             return;
         }
+
+        const chatId = msg.chat.id;
+        const username = resolveChatName(msg);
+        saveUser(chatId, username);
+        const threadId = msg.message_thread_id;
 
         bot.sendMessage(chatId, `🔍 Analizando ${symbol}...`, { message_thread_id: threadId });
 
@@ -466,7 +471,16 @@ By Ditox🔮
 
                 reportMsg += `\n🕒 ${getPeruTime()} (PE)`;
 
-                await bot.sendMessage(chatId, reportMsg, { message_thread_id: threadId, parse_mode: 'HTML' });
+                const inline_keyboard = [[
+                    { text: `🟢 tickL`, callback_data: `tickL_${symbol}` },
+                    { text: `🔴 tickS`, callback_data: `tickS_${symbol}` }
+                ]];
+
+                await bot.sendMessage(chatId, reportMsg, { 
+                    message_thread_id: threadId, 
+                    parse_mode: 'HTML',
+                    reply_markup: { inline_keyboard }
+                });
                 if (state.stickyDatabase.length > 0) {
                     const randomSticker = state.stickyDatabase[Math.floor(Math.random() * state.stickyDatabase.length)];
                     bot.sendSticker(chatId, randomSticker, { message_thread_id: threadId }).catch(console.error);
@@ -598,6 +612,36 @@ By Ditox🔮
         const threadId = msg.message_thread_id;
         const text = `🧘 <b>La psicología es el 80% del trading.</b>\n\nEvitar el <b>TILT</b> <i>(pérdida del control emocional)</i> es la clave absoluta para alcanzar la rentabilidad consistente. Un trader tranquilo sigue su plan; un trader alterado regala su dinero al mercado. 💡📊`;
         bot.sendMessage(chatId, text, { parse_mode: 'HTML', message_thread_id: threadId });
+    });
+
+    bot.on('callback_query', async (query) => {
+        const data = query.data;
+        const chatId = query.message.chat.id;
+        const threadId = query.message.message_thread_id;
+        
+        if (data.startsWith('tick')) {
+            const terrain = data.startsWith('tickS') ? 'SHORT' : 'LONG';
+            const symbol = data.split('_')[1];
+            
+            bot.sendMessage(chatId, `⏳ Calculando TICK para ${symbol} en terreno de ${terrain}...`, { message_thread_id: threadId });
+
+            const marketData = await fetchData(symbol, '2h', 100);
+            if (!marketData) {
+                bot.sendMessage(chatId, `❌ Error obteniendo datos para ${symbol}`, { message_thread_id: threadId });
+                bot.answerCallbackQuery(query.id);
+                return;
+            }
+
+            const currentPrice = marketData.closes[marketData.closes.length - 1];
+            const tickValue = calcularTICK(marketData.highs, marketData.lows, currentPrice, terrain);
+
+            if (tickValue) {
+                bot.sendMessage(chatId, `🎯 <b>Posible TICK (${terrain}):</b> $${tickValue}\n💎 <b>Par:</b> ${symbol} (2h)`, { message_thread_id: threadId, parse_mode: 'HTML' });
+            } else {
+                bot.sendMessage(chatId, `❌ No se pudo calcular el TICK para ${symbol}`, { message_thread_id: threadId });
+            }
+            bot.answerCallbackQuery(query.id);
+        }
     });
 
     // Capture everything

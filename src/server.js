@@ -1,3 +1,5 @@
+const { exec } = require('child_process');
+const fs = require('fs');
 const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
@@ -13,7 +15,8 @@ const { getBot, enviarTelegram, simulateSignalEffect } = require('./bot');
 const { checkConsolidatedAlerts } = require('./engine/loop');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, '../'))); // Serve static from root
 
 // Helper state local pointers
@@ -25,6 +28,63 @@ const {
 } = state;
 
 // --- Routes ---
+
+const TARGET_GROUPS = [
+    { id: '-1003055730763', name: 'Grupo 1 (-1003055730763)' },
+    { id: '-1002236838794', name: 'Grupo 2 (-1002236838794)' },
+    { id: '@MEXCSpanish', name: 'MEXC Spanish' },
+    { id: '@BCDTrading', name: 'BCD Trading' },
+    { id: '@AltCryptoGrupo', name: 'AltCrypto Grupo' },
+    { id: '-1002875737156', name: 'Grupo 3 (-1002875737156)' },
+    { id: '-1002614085310', name: 'Grupo 4 (-1002614085310)' },
+    { id: '-1003752210566', name: 'Grupo Pruebas (Test -1003752210566)' }
+];
+
+app.get('/admin/groups', (req, res) => {
+    res.json(TARGET_GROUPS);
+});
+
+app.post('/admin/broadcast-groups', async (req, res) => {
+    const { password, message, imageBase64, selectedGroups } = req.body;
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
+    
+    if (!selectedGroups || selectedGroups.length === 0) return res.status(400).json({ success: false, message: 'No hay grupos seleccionados' });
+
+    const payload = JSON.stringify({
+        message,
+        image_base64: imageBase64,
+        groups: selectedGroups
+    });
+
+    const tempPayloadPath = path.join(__dirname, `payload_${Date.now()}.json`);
+    const scriptPath = path.join(__dirname, 'userbot_logic.py');
+
+    try {
+        fs.writeFileSync(tempPayloadPath, payload);
+        
+        exec(`python "${scriptPath}" "@${tempPayloadPath}"`, (error, stdout, stderr) => {
+            if (fs.existsSync(tempPayloadPath)) fs.unlinkSync(tempPayloadPath);
+            
+            if (error) {
+                console.error(`exec error: ${error}`);
+                console.error(`stderr: ${stderr}`);
+                return res.status(500).json({ success: false, message: 'Error ejecutando Userbot' });
+            }
+            
+            try {
+                const result = JSON.parse(stdout);
+                res.json(result);
+            } catch (e) {
+                console.error("Parse error:", stdout, stderr);
+                res.status(500).json({ success: true, message: 'Respuesta parcial del Userbot', raw: stdout });
+            }
+        });
+    } catch (e) {
+        console.error("Broadcast error:", e);
+        if (fs.existsSync(tempPayloadPath)) fs.unlinkSync(tempPayloadPath);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
 
 // Endpoint de prueba simple
 app.get('/test-alert', async (req, res) => {
@@ -549,6 +609,9 @@ app.get('/', (req, res) => {
             <button onclick="showSection('users')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
                 👥 Panel de Usuarios
             </button>
+            <button onclick="showSection('broadcast')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
+                📢 Broadcast a Grupos
+            </button>
         </nav>
 
 
@@ -750,6 +813,54 @@ app.get('/', (req, res) => {
                             <tr><td colspan="4" class="py-8 text-center text-gray-500">Cargando base de datos de usuarios...</td></tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: BROADCAST GROUPS (Admin Only) -->
+        <div id="section-broadcast" class="hidden">
+            <div class="bg-gray-800/40 backdrop-blur-xl rounded-3xl border border-purple-500/30 overflow-hidden shadow-2xl p-6">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b border-purple-500/30 pb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-purple-400 flex items-center gap-2">
+                            <span>🚀</span> Enviar Mensaje a Grupos
+                        </h2>
+                        <p class="text-gray-400 text-sm mt-1">Envía análisis, imágenes y texto a múltiples grupos a la vez.</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Left: Form -->
+                    <div class="space-y-4 bg-gray-900/40 p-6 rounded-2xl border border-gray-700/50">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Mensaje (HTML permitido)</label>
+                            <textarea id="broadcast-message-text" rows="5" class="w-full bg-gray-800 text-gray-200 border border-gray-600 rounded-xl p-3 focus:ring-2 focus:ring-purple-500 focus:outline-none" placeholder="Escribe tu mensaje o análisis..."></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Imagen (Opcional)</label>
+                            <input type="file" id="broadcast-image" accept="image/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-900/30 file:text-purple-400 hover:file:bg-purple-900/50 transition-all cursor-pointer">
+                            <div id="image-preview-container" class="mt-4 hidden">
+                                <img id="broadcast-image-preview" src="" class="max-h-48 rounded-xl border border-gray-600 object-contain mx-auto">
+                            </div>
+                        </div>
+
+                        <button id="btn-send-broadcast-groups" onclick="sendGroupBroadcast()" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-purple-500/30 transition-all flex justify-center items-center gap-2">
+                            <span>📨</span> Enviar a Grupos Seleccionados
+                        </button>
+                    </div>
+
+                    <!-- Right: Groups List -->
+                    <div class="bg-gray-900/40 p-6 rounded-2xl border border-gray-700/50 flex flex-col max-h-[500px]">
+                        <div class="flex justify-between items-center mb-4">
+                            <label class="block text-sm font-medium text-gray-300">Seleccionar Grupos</label>
+                            <button onclick="toggleAllGroups()" class="text-xs text-purple-400 hover:text-purple-300 underline">Marcar / Desmarcar Todos</button>
+                        </div>
+                        
+                        <div id="groups-list-container" class="flex-grow overflow-y-auto custom-scrollbar space-y-2 pr-2">
+                            <p class="text-gray-500 text-sm text-center py-4">Cargando grupos...</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
