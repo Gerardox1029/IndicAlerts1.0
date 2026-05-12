@@ -37,6 +37,7 @@ const TARGET_GROUPS = [
     { id: '@AltCryptoGrupo', name: 'AltCrypto Grupo' },
     { id: '-1002875737156', name: 'Grupo 3 (-1002875737156)' },
     { id: '-1002614085310', name: 'Grupo 4 (-1002614085310)' },
+    { id: '-1003128852916', name: 'Grupo 5 (-1003128852916)' },
     { id: '-1003752210566', name: 'Grupo Pruebas (Test -1003752210566)' }
 ];
 
@@ -47,7 +48,7 @@ app.get('/admin/groups', (req, res) => {
 app.post('/admin/broadcast-groups', async (req, res) => {
     const { password, message, imageBase64, selectedGroups } = req.body;
     if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
-    
+
     if (!selectedGroups || selectedGroups.length === 0) return res.status(400).json({ success: false, message: 'No hay grupos seleccionados' });
 
     const payload = JSON.stringify({
@@ -61,16 +62,16 @@ app.post('/admin/broadcast-groups', async (req, res) => {
 
     try {
         fs.writeFileSync(tempPayloadPath, payload);
-        
+
         exec(`python3 "${scriptPath}" "@${tempPayloadPath}"`, (error, stdout, stderr) => {
             if (fs.existsSync(tempPayloadPath)) fs.unlinkSync(tempPayloadPath);
-            
+
             if (error) {
                 console.error(`exec error: ${error}`);
                 console.error(`stderr: ${stderr}`);
                 return res.status(500).json({ success: false, message: 'Error ejecutando Userbot' });
             }
-            
+
             try {
                 const result = JSON.parse(stdout);
                 res.json(result);
