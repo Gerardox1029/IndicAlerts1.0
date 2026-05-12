@@ -62,7 +62,7 @@ app.post('/admin/broadcast-groups', async (req, res) => {
     try {
         fs.writeFileSync(tempPayloadPath, payload);
         
-        exec(`python "${scriptPath}" "@${tempPayloadPath}"`, (error, stdout, stderr) => {
+        exec(`python3 "${scriptPath}" "@${tempPayloadPath}"`, (error, stdout, stderr) => {
             if (fs.existsSync(tempPayloadPath)) fs.unlinkSync(tempPayloadPath);
             
             if (error) {
