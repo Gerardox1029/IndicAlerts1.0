@@ -1,38 +1,38 @@
 const RSI = require('technicalindicators').RSI;
 const SMA = require('technicalindicators').SMA;
 
-function calcularIndicadores(closes, highs, lows) {
-    if (!closes || closes.length < 50) return null;
+function calcularIndicadores(closes, highs, lows, rsiPeriod = 20, smaPeriod = 20, tangentCount = 3) {
+    if (!closes || closes.length < (rsiPeriod + smaPeriod + 5)) return null;
 
-    // RSI de 20 períodos
-    const rsiInput = { values: closes, period: 20 };
+    // RSI
+    const rsiInput = { values: closes, period: rsiPeriod };
     const rsiValues = RSI.calculate(rsiInput);
 
-    if (rsiValues.length < 20) return null;
+    if (rsiValues.length < 1) return null;
 
-    // RSI Suavizado: SMA de 20 sobre el RSI
-    const smaInput = { period: 20, values: rsiValues };
+    // RSI Suavizado: SMA sobre el RSI
+    const smaInput = { period: smaPeriod, values: rsiValues };
     const rsiSuavizadoValues = SMA.calculate(smaInput);
 
-    if (rsiSuavizadoValues.length < 15) return null;
+    if (rsiSuavizadoValues.length < 2) return null;
 
     // Tangente actual
     const currentRsiSuavizado = rsiSuavizadoValues[rsiSuavizadoValues.length - 1];
     const prevRsiSuavizado = rsiSuavizadoValues[rsiSuavizadoValues.length - 2];
     const tangente = currentRsiSuavizado - prevRsiSuavizado;
 
-    // Historial de tangentes (últimas 3 velas)
-    // t0 = actual, t1 = anterior, t2 = trasanterior
+    // Historial de tangentes
     const tangentsHistory = [];
-    if (rsiSuavizadoValues.length >= 4) {
-        const i = rsiSuavizadoValues.length - 1;
-        tangentsHistory.push(rsiSuavizadoValues[i] - rsiSuavizadoValues[i - 1]);     // t0 (actual)
-        tangentsHistory.push(rsiSuavizadoValues[i - 1] - rsiSuavizadoValues[i - 2]);   // t1
-        tangentsHistory.push(rsiSuavizadoValues[i - 2] - rsiSuavizadoValues[i - 3]);   // t2
+    const availablePoints = rsiSuavizadoValues.length;
+    for (let i = 0; i < tangentCount; i++) {
+        const idx = availablePoints - 1 - i;
+        if (idx > 0) {
+            tangentsHistory.push(rsiSuavizadoValues[idx] - rsiSuavizadoValues[idx - 1]);
+        }
     }
 
-    // Análisis de Curvatura (Últimos 10 periodos)
-    const recentValues = rsiSuavizadoValues.slice(-11, -1);
+    // Análisis de Curvatura (basado en tangentCount)
+    const recentValues = rsiSuavizadoValues.slice(-(tangentCount + 1), -1);
     let increasingCount = 0;
     let decreasingCount = 0;
     for (let i = 1; i < recentValues.length; i++) {
@@ -42,20 +42,21 @@ function calcularIndicadores(closes, highs, lows) {
 
     let curveTrend = 'NEUTRAL';
     const threshold = recentValues.length - 1;
-    if (decreasingCount >= threshold * 0.9) curveTrend = 'DOWN';
-    else if (increasingCount >= threshold * 0.9) curveTrend = 'UP';
+    if (threshold > 0) {
+        if (decreasingCount >= threshold * 0.9) curveTrend = 'DOWN';
+        else if (increasingCount >= threshold * 0.9) curveTrend = 'UP';
+    }
 
-    // RSI 22 (Para referencia visual si se necesita, aunque no se usa en lógica crítica aquí)
-    const rsi22Values = RSI.calculate({ values: closes, period: 22 });
-    // const currentRsi22 = rsi22Values.length > 0 ? rsi22Values[rsi22Values.length - 1] : 0;
+    // RSI 22 (Para referencia visual si se necesita)
+    // const rsi22Values = RSI.calculate({ values: closes, period: 22 });
 
     return {
         rsiSuavizado: currentRsiSuavizado,
         tangente: tangente,
-        tangentsHistory: tangentsHistory, // [t0, t1, t2] (Actual -> Pasado)
+        tangentsHistory: tangentsHistory, // [t0, t1, t2...]
         curveTrend: curveTrend,
         currentPrice: closes[closes.length - 1],
-        highs, // Pasar para referencia de decimales
+        highs,
         lows
     };
 }
