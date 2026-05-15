@@ -4,7 +4,8 @@
   "description": "24/7 Crypto Market Monitor with Telegram Alerts",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "login": "python src/userbot_setup.py"
   },
   "engines": {
     "node": ">=20.0.0"
