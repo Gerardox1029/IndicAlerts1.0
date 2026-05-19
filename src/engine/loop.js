@@ -218,23 +218,6 @@ async function procesarMercado() {
                 tickValue = calcularTICK(highs, lows, indicadores.currentPrice, estadoInfo.terrain);
             }
 
-            totalWeight += estadoInfo.weight || 0;
-            if (macroTrend === 'ALCISTA') {
-                longTerrainCount++;
-                if (CATEGORIES['Large Caps'].includes(symbol)) largeCapsLongCount++;
-            }
-            if (macroTrend === 'BAJISTA') {
-                shortTerrainCount++;
-                if (CATEGORIES['Large Caps'].includes(symbol)) largeCapsShortCount++;
-            }
-
-            const key = `${symbol}_${interval}`;
-            if (!estadoAlertas[key]) estadoAlertas[key] = {};
-            estadoAlertas[key].currentStateText = estadoInfo.text;
-            estadoAlertas[key].currentStateEmoji = estadoInfo.emoji;
-            estadoAlertas[key].currentPrice = indicadores.currentPrice;
-            estadoAlertas[key].tangente = indicadores.tangente;
-
             // --- Lógica de validación con 4h para alertas de 2h y estado ---
             let macroTrend = 'NEUTRAL'; // ALCISTA, BAJISTA, NEUTRAL
 
@@ -260,6 +243,23 @@ async function procesarMercado() {
                     console.error(`Error validando 4h para ${symbol}:`, e.message);
                 }
             }
+
+            totalWeight += estadoInfo.weight || 0;
+            if (macroTrend === 'ALCISTA') {
+                longTerrainCount++;
+                if (CATEGORIES['Large Caps'].includes(symbol)) largeCapsLongCount++;
+            }
+            if (macroTrend === 'BAJISTA') {
+                shortTerrainCount++;
+                if (CATEGORIES['Large Caps'].includes(symbol)) largeCapsShortCount++;
+            }
+
+            const key = `${symbol}_${interval}`;
+            if (!estadoAlertas[key]) estadoAlertas[key] = {};
+            estadoAlertas[key].currentStateText = estadoInfo.text;
+            estadoAlertas[key].currentStateEmoji = estadoInfo.emoji;
+            estadoAlertas[key].currentPrice = indicadores.currentPrice;
+            estadoAlertas[key].tangente = indicadores.tangente;
 
             // Actualizar Estado en Dashboard con info Macro
             if (macroTrend === 'ALCISTA' && estadoInfo.terrain === 'LONG') {
