@@ -219,11 +219,11 @@ async function procesarMercado() {
             }
 
             totalWeight += estadoInfo.weight || 0;
-            if (estadoInfo.terrain === 'LONG') {
+            if (macroTrend === 'ALCISTA') {
                 longTerrainCount++;
                 if (CATEGORIES['Large Caps'].includes(symbol)) largeCapsLongCount++;
             }
-            if (estadoInfo.terrain === 'SHORT') {
+            if (macroTrend === 'BAJISTA') {
                 shortTerrainCount++;
                 if (CATEGORIES['Large Caps'].includes(symbol)) largeCapsShortCount++;
             }

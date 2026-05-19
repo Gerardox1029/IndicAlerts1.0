@@ -19,6 +19,9 @@ const Sticker = mongoose.model('Sticker', StickerSchema);
 
 const AudioSchema = new mongoose.Schema({
     fileId: { type: String, required: true, unique: true },
+    uniqueId: { type: String },
+    hash: { type: String },
+    dataBase64: { type: String },
     addedAt: { type: Date, default: Date.now }
 });
 const Audio = mongoose.model('Audio', AudioSchema);
@@ -50,6 +53,12 @@ const BitacoraTradeSchema = new mongoose.Schema({
     reflexion: { type: String, default: '' }
 });
 const BitacoraTrade = mongoose.model('BitacoraTrade', BitacoraTradeSchema);
+
+const TargetGroupSchema = new mongoose.Schema({
+    groupId: { type: String, required: true },
+    name: { type: String, required: true }
+});
+const TargetGroup = mongoose.model('TargetGroup', TargetGroupSchema);
 
 // Conexión a Base de Datos
 function connectDB() {
@@ -131,5 +140,6 @@ module.exports = {
     saveUserToMongo,
     Sticker,
     Audio,
-    BitacoraTrade
+    BitacoraTrade,
+    TargetGroup
 };

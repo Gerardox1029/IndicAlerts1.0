@@ -10,7 +10,7 @@ const {
     ADMIN_PASSWORD
 } = require('./config');
 const state = require('./services/state');
-const { saveUserToMongo, User } = require('./db/mongo');
+const { saveUserToMongo, User, TargetGroup } = require('./db/mongo');
 const { getBot, enviarTelegram, simulateSignalEffect } = require('./bot');
 const { checkConsolidatedAlerts } = require('./engine/loop');
 
@@ -29,20 +29,71 @@ const {
 
 // --- Routes ---
 
-const TARGET_GROUPS = [
-    { id: '-1003055730763', name: 'Grupo 1 (-1003055730763)' },
-    { id: '-1002236838794', name: 'Grupo 2 (-1002236838794)' },
-    { id: '@MEXCSpanish', name: 'MEXC Spanish' },
-    { id: '@BCDTrading', name: 'BCD Trading' },
-    { id: '@AltCryptoGrupo', name: 'AltCrypto Grupo' },
-    { id: '-1002875737156', name: 'Grupo 3 (-1002875737156)' },
-    { id: '-1002614085310', name: 'Grupo 4 (-1002614085310)' },
-    { id: '-1003128852916', name: 'Grupo 5 (-1003128852916)' },
-    { id: '-1003752210566', name: 'Grupo Pruebas (Test -1003752210566)' }
+const DEFAULT_TARGET_GROUPS = [
+    { groupId: '-1003055730763', name: 'Grupo 1 (-1003055730763)' },
+    { groupId: '-1002236838794', name: 'Grupo 2 (-1002236838794)' },
+    { groupId: '@MEXCSpanish', name: 'MEXC Spanish' },
+    { groupId: '@BCDTrading', name: 'BCD Trading' },
+    { groupId: '@AltCryptoGrupo', name: 'AltCrypto Grupo' },
+    { groupId: '-1002875737156', name: 'Grupo 3 (-1002875737156)' },
+    { groupId: '-1002614085310', name: 'Grupo 4 (-1002614085310)' },
+    { groupId: '-1003128852916', name: 'Grupo 5 (-1003128852916)' },
+    { groupId: '-1003752210566', name: 'Grupo Pruebas (Test -1003752210566)' }
 ];
 
-app.get('/admin/groups', (req, res) => {
-    res.json(TARGET_GROUPS);
+async function loadInitialGroups() {
+    try {
+        const count = await TargetGroup.countDocuments();
+        if (count === 0) {
+            await TargetGroup.insertMany(DEFAULT_TARGET_GROUPS);
+            console.log('✅ Grupos por defecto guardados en la BD');
+        }
+    } catch (e) {
+        console.error('Error inicializando grupos:', e.message);
+    }
+}
+setTimeout(loadInitialGroups, 5000);
+
+app.get('/admin/groups', async (req, res) => {
+    try {
+        const groups = await TargetGroup.find();
+        res.json(groups.map(g => ({ id: g._id, groupId: g.groupId, name: g.name })));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/admin/groups', async (req, res) => {
+    const { password, groupId, name } = req.body;
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
+    try {
+        const newGroup = await TargetGroup.create({ groupId, name });
+        res.json({ success: true, group: { id: newGroup._id, groupId: newGroup.groupId, name: newGroup.name } });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.put('/admin/groups/:id', async (req, res) => {
+    const { password, groupId, name } = req.body;
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
+    try {
+        await TargetGroup.findByIdAndUpdate(req.params.id, { groupId, name });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.delete('/admin/groups/:id', async (req, res) => {
+    const { password } = req.body;
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
+    try {
+        await TargetGroup.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
 });
 
 app.post('/admin/broadcast-groups', async (req, res) => {
@@ -320,6 +371,17 @@ app.post('/api/bitacora/update', async (req, res) => {
         res.status(500).json({ success: false, message: e.message });
     }
 });
+
+// Daily Sync Bitacora Trades (Constantly every day)
+setInterval(async () => {
+    try {
+        const { syncMexcTrades } = require('./api/mexc');
+        await syncMexcTrades();
+        console.log("✅ Bitacora synced automatically (Daily).");
+    } catch (e) {
+        console.error("❌ Error running daily bitacora sync:", e.message);
+    }
+}, 24 * 60 * 60 * 1000);
 
 // Endpoint API para actualizaciones dinámicas (AJAX)
 // Endpoint API para actualizaciones dinámicas (AJAX)
@@ -855,7 +917,10 @@ app.get('/', (req, res) => {
                     <div class="bg-gray-900/40 p-6 rounded-2xl border border-gray-700/50 flex flex-col max-h-[500px]">
                         <div class="flex justify-between items-center mb-4">
                             <label class="block text-sm font-medium text-gray-300">Seleccionar Grupos</label>
-                            <button onclick="toggleAllGroups()" class="text-xs text-purple-400 hover:text-purple-300 underline">Marcar / Desmarcar Todos</button>
+                            <div>
+                                <button onclick="addGroup()" class="text-xs text-blue-400 hover:text-blue-300 font-bold mr-3">+ Agregar Grupo</button>
+                                <button onclick="toggleAllGroups()" class="text-xs text-purple-400 hover:text-purple-300 underline">Marcar / Desmarcar Todos</button>
+                            </div>
                         </div>
                         
                         <div id="groups-list-container" class="flex-grow overflow-y-auto custom-scrollbar space-y-2 pr-2">

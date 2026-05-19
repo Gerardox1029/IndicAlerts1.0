@@ -664,7 +664,7 @@ function renderBitacora(trades) {
                     <option value="SL" ${t.resultadoEstado === 'SL' ? 'selected' : ''}>SL ❌</option>
                 </select>
                 <input type="text" placeholder="ROI %" value="${t.roi || ''}" onblur="updateBitacoraTrade('${t._id}', 'roi', this.value)" class="w-full bg-gray-800 text-[10px] text-white p-1.5 rounded mb-2 border border-gray-700 text-center">
-                <textarea placeholder="Reflexión..." onblur="updateBitacoraTrade('${t._id}', 'reflexion', this.value)" class="w-full bg-gray-800 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 h-12 resize-none">${t.reflexion || ''}</textarea>
+                <textarea placeholder="Reflexión..." onblur="updateBitacoraTrade('${t._id}', 'reflexion', this.value)" class="w-full bg-gray-800 text-[10px] text-gray-300 p-1.5 rounded border border-gray-700 h-24 resize-y">${t.reflexion || ''}</textarea>
             </td>
             <td class="py-4 px-4 text-center">
                 <div class="text-3xl ${confColor}">${conf}%</div>
@@ -763,15 +763,67 @@ function loadGroupsForBroadcast() {
                 return;
             }
             container.innerHTML = groups.map(g => `
-                <label class="flex items-center justify-between p-3 rounded-xl border border-gray-700/50 hover:border-purple-500/40 hover:bg-purple-900/10 transition-all cursor-pointer">
-                    <span class="text-sm font-bold text-gray-300">${g.name}</span>
-                    <div class="relative inline-flex items-center">
-                        <input type="checkbox" class="broadcast-group-chk sr-only peer" value="${g.id}">
-                        <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
+                <div class="flex items-center justify-between p-3 rounded-xl border border-gray-700/50 hover:border-purple-500/40 hover:bg-purple-900/10 transition-all">
+                    <label class="flex-grow flex items-center gap-2 cursor-pointer">
+                        <div class="relative inline-flex items-center">
+                            <input type="checkbox" class="broadcast-group-chk sr-only peer" value="${g.groupId}">
+                            <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
+                        </div>
+                        <span class="text-sm font-bold text-gray-300 ml-2">${g.name}</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <button onclick="editGroup('${g.id}', '${g.groupId}', '${g.name}')" class="text-xs text-blue-400 hover:text-blue-300 p-1">✏️</button>
+                        <button onclick="deleteGroup('${g.id}')" class="text-xs text-red-400 hover:text-red-300 p-1">🗑️</button>
                     </div>
-                </label>
+                </div>
             `).join('');
         });
+}
+
+function addGroup() {
+    customPrompt("ID del Grupo (@nombre o -100xxx):", (groupId) => {
+        if (!groupId) return;
+        customPrompt("Nombre del Grupo:", (name) => {
+            if (!name) return;
+            fetch('/admin/groups', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: 'awd ', groupId, name })
+            }).then(r=>r.json()).then(d=>{
+                if(d.success) loadGroupsForBroadcast();
+                else alert("Error: " + d.message);
+            });
+        });
+    });
+}
+
+function editGroup(id, oldGroupId, oldName) {
+    customPrompt("Nuevo ID del Grupo ("+oldGroupId+"):", (groupId) => {
+        if (!groupId) groupId = oldGroupId;
+        customPrompt("Nuevo Nombre del Grupo ("+oldName+"):", (name) => {
+            if (!name) name = oldName;
+            fetch('/admin/groups/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: 'awd ', groupId, name })
+            }).then(r=>r.json()).then(d=>{
+                if(d.success) loadGroupsForBroadcast();
+                else alert("Error: " + d.message);
+            });
+        });
+    });
+}
+
+function deleteGroup(id) {
+    if(!confirm("¿Eliminar grupo?")) return;
+    fetch('/admin/groups/' + id, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: 'awd ' })
+    }).then(r=>r.json()).then(d=>{
+        if(d.success) loadGroupsForBroadcast();
+        else alert("Error: " + d.message);
+    });
 }
 
 function toggleAllGroups() {
