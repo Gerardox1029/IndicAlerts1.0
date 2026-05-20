@@ -1,6 +1,9 @@
 const axios = require('axios');
 const { GoogleGenAI } = require('@google/genai');
-const { YoutubeTranscript } = require('youtube-transcript'); // 🚀 NUEVA IMPORTACIÓN
+const { YoutubeTranscript } = require('youtube-transcript');
+const Parser = require('rss-parser'); // 🚀 NUEVA IMPORTACIÓN
+
+const rssParser = new Parser();
 
 // ─── Configuración de Canales ─────────────────────────────────────────────────
 const CANALES_YT = {
@@ -8,7 +11,19 @@ const CANALES_YT = {
     InformeCrypto: { channelId: 'UCccJ73p62TFlX1ImgWEdp4g', nombre: 'Informe Crypto' }
 };
 
-let ultimosVideos = { Cryptobruj: null, InformeCrypto: null };
+let ultimosVideos = { CryptoBruj: null, InformeCrypto: null };
+
+// ─── Funciones Auxiliares ────────────────────────────────────────────────────
+
+// Convierte el formato ISO 8601 de YouTube (ej. PT15M33S) a segundos totales
+function getDurationInSeconds(duration) {
+    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+    if (!match) return 0;
+    const hours = (parseInt(match[1]) || 0);
+    const minutes = (parseInt(match[2]) || 0);
+    const seconds = (parseInt(match[3]) || 0);
+    return hours * 3600 + minutes * 60 + seconds;
+}
 
 // ─── PROMPT DEL SISTEMA ──────────────────────────────────────────────────────
 function buildPrompt(nombreCanal, titulo, transcripcion) {
@@ -33,80 +48,84 @@ Reglas:
 4. Si hay precios específicos, inclúyelos siempre.`;
 }
 
-// ─── Obtener último video via YouTube Data API v3 ────────────────────────────
-async function getLatestVideo(canalKey) {
+// ─── Obtener último video VÁLIDO via RSS + YouTube API (Costo: 1 punto) ──────
+async function getLatestValidVideo(canalKey) {
     const canal = CANALES_YT[canalKey];
     const apiKey = process.env.YOUTUBE_API_KEY;
 
     if (!apiKey) throw new Error('YOUTUBE_API_KEY no está configurada en .env');
 
-    const url = 'https://www.googleapis.com/youtube/v3/search';
+    // 1. Leer el RSS gratuito de YouTube (Costo: 0 puntos)
+    const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${canal.channelId}`;
+    const feed = await rssParser.parseURL(rssUrl);
+
+    if (!feed.items || feed.items.length === 0) {
+        throw new Error(`No se encontraron videos en el RSS de ${canal.nombre}`);
+    }
+
+    // Tomar los últimos 3 videos del RSS para asegurar que encontramos uno válido
+    // El ID en el RSS viene con formato "yt:video:ID", extraemos solo el ID.
+    const videoIds = feed.items.slice(0, 3).map(item => item.id.replace('yt:video:', ''));
+
+    // 2. Consultar detalles de esos 3 videos de un solo golpe (Costo: 1 punto)
+    const apiUrl = 'https://www.googleapis.com/youtube/v3/videos';
     const params = {
-        part: 'snippet',
-        channelId: canal.channelId,
-        maxResults: 3,
-        order: 'date',
-        type: 'video',
-        videoDuration: 'medium',
+        part: 'snippet,contentDetails',
+        id: videoIds.join(','),
         key: apiKey
     };
 
-    const response = await axios.get(url, { params });
+    const response = await axios.get(apiUrl, { params });
     const items = response.data.items;
 
-    if (!items || items.length === 0) {
-        throw new Error(`No se encontraron videos para el canal ${canal.nombre}`);
+    // 3. Filtrar Shorts (< 60s) y Directos/Estrenos
+    for (const item of items) {
+        const durationSecs = getDurationInSeconds(item.contentDetails.duration);
+        const isLive = item.snippet.liveBroadcastContent !== 'none'; // Descarta 'live' y 'upcoming'
+
+        // Si dura más de 60 segundos y no es un directo, ¡ES NUESTRO VIDEO!
+        if (durationSecs >= 60 && !isLive) {
+            return {
+                id: item.id,
+                url: `https://www.youtube.com/watch?v=${item.id}`,
+                title: item.snippet.title,
+                publishedAt: item.snippet.publishedAt,
+                channelTitle: item.snippet.channelTitle
+            };
+        }
     }
 
-    const item = items[0];
-    return {
-        id: item.id.videoId,
-        url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-        title: item.snippet.title,
-        publishedAt: item.snippet.publishedAt,
-        channelTitle: item.snippet.channelTitle
-    };
+    throw new Error('NO_VALID_VIDEO');
 }
 
 // ─── Extraer Transcripción ───────────────────────────────────────────────────
-// 🚀 NUEVA FUNCIÓN: Obtiene el texto plano del video
 async function getTranscript(videoId) {
     try {
-        console.log(`[YT TRANSCRIPT] Extrayendo subtítulos del video ${videoId}...`);
         const transcriptRaw = await YoutubeTranscript.fetchTranscript(videoId);
-
-        // Unir todos los fragmentos de texto en un solo string
-        const textoCompleto = transcriptRaw.map(item => item.text).join(' ');
-        return textoCompleto;
+        return transcriptRaw.map(item => item.text).join(' ');
     } catch (error) {
-        console.error(`[YT TRANSCRIPT] Error extrayendo subtítulos: ${error.message}`);
         throw new Error('NO_TRANSCRIPT');
     }
 }
 
 // ─── Generar resumen con Gemini ───────────────────────────────────────────────
 async function generarResumenIA(video, nombreCanal) {
-    if (!process.env.GEMINI_API_KEY) {
-        throw new Error('GEMINI_API_KEY no está configurada en .env');
-    }
+    if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY no configurada');
 
-    // 1. Obtener la transcripción real
     const transcripcion = await getTranscript(video.id);
-
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const prompt = buildPrompt(nombreCanal, video.title, transcripcion);
 
     console.log(`[GEMINI] Procesando transcripción de "${video.title}"...`);
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash', // Flash es ideal porque tiene 1 millón de tokens de contexto (soporta transcripciones de horas sin problema)
+        model: 'gemini-2.5-flash',
         contents: [{ role: 'user', parts: [{ text: prompt }] }]
     });
 
     let analisisIA = response.text;
-    if (!analisisIA) throw new Error('Gemini devolvió una respuesta vacía');
+    if (!analisisIA) throw new Error('Respuesta vacía');
 
-    // Calcular tiempo transcurrido desde publicación
     const publicado = new Date(video.publishedAt);
     const horasAtras = Math.floor((Date.now() - publicado) / 3600000);
     const diasAtras = Math.floor(horasAtras / 24);
@@ -123,23 +142,32 @@ async function startYoutubePolling(enviarTelegramFn) {
     async function chequearNuevosVideos() {
         for (const clave of Object.keys(CANALES_YT)) {
             try {
-                const video = await getLatestVideo(clave);
+                const video = await getLatestValidVideo(clave);
 
-                if (ultimosVideos[clave] !== null && ultimosVideos[clave] !== video.id) {
-                    console.log(`[ALERTA] ¡Nuevo video de ${CANALES_YT[clave].nombre}! → ${video.title}`);
+                // Si es el primer ciclo, solo registramos el ID sin alertar
+                if (ultimosVideos[clave] === null) {
+                    ultimosVideos[clave] = video.id;
+                    continue;
+                }
+
+                // Si hay un video nuevo válido
+                if (ultimosVideos[clave] !== video.id) {
+                    console.log(`[ALERTA] ¡Nuevo video VÁLIDO de ${CANALES_YT[clave].nombre}! → ${video.title}`);
+                    ultimosVideos[clave] = video.id; // Actualizamos rápido para evitar alertas duplicadas si Gemini tarda
+
                     const resumen = await generarResumenIA(video, CANALES_YT[clave].nombre);
                     await enviarTelegramFn(resumen, 'BTCUSDT', { skipSticker: true });
                 }
-
-                ultimosVideos[clave] = video.id;
             } catch (error) {
-                console.error(`[YT] Error en polling de ${CANALES_YT[clave].nombre}:`, error.message);
+                if (error.message !== 'NO_VALID_VIDEO') {
+                    console.error(`[YT] Error en polling de ${CANALES_YT[clave].nombre}:`, error.message);
+                }
             }
         }
     }
 
     await chequearNuevosVideos();
-    console.log('✅ Polling de YouTube iniciado (Analizando transcripciones cada 15 min).');
+    console.log('✅ Polling optimizado iniciado (RSS + YT API a 1 punto). Filtrando Shorts/Directos.');
     setInterval(chequearNuevosVideos, 15 * 60 * 1000);
 }
 
@@ -161,7 +189,7 @@ function setupYoutubeCommands(bot) {
 
         bot.sendMessage(
             chatId,
-            '🤖 *Resumen de Análisis (YouTube):*\nSelecciona un canal para extraer la transcripción de su último video y resumirla:',
+            '🤖 *Resumen de Análisis (YouTube):*\nSelecciona un canal para extraer el último video (ignorando Shorts/Directos):',
             opciones
         );
     });
@@ -176,23 +204,23 @@ function setupYoutubeCommands(bot) {
         const canal = CANALES_YT[canalClave];
         if (!canal) return;
 
-        bot.answerCallbackQuery(callbackQuery.id, { text: `Descargando transcripción de ${canal.nombre}...` });
+        bot.answerCallbackQuery(callbackQuery.id, { text: `Buscando último video válido de ${canal.nombre}...` });
 
         const mensajeCarga = await bot.sendMessage(
             chatId,
-            `🔍 Extrayendo subtítulos y analizando el último video de *${canal.nombre}*...\n_Esto puede tomar unos segundos..._`,
+            `🔍 Buscando y analizando el último video válido de *${canal.nombre}*...\n_Ignorando Shorts y transmisiones en vivo._`,
             { parse_mode: 'Markdown' }
         );
 
         try {
-            const video = await getLatestVideo(canalClave);
+            const video = await getLatestValidVideo(canalClave);
             const resumen = await generarResumenIA(video, canal.nombre);
 
             await bot.editMessageText(resumen, {
                 chat_id: chatId,
                 message_id: mensajeCarga.message_id,
                 parse_mode: 'Markdown',
-                disable_web_page_preview: true // Evita que Telegram muestre una miniatura gigante del video
+                disable_web_page_preview: true
             });
 
         } catch (error) {
@@ -200,13 +228,11 @@ function setupYoutubeCommands(bot) {
 
             let errorMsg = '❌ Ocurrió un error procesando el video.';
             if (error.message === 'NO_TRANSCRIPT') {
-                errorMsg = '❌ El último video de este canal no tiene subtítulos disponibles para analizar.';
-            } else if (error.message.includes('YOUTUBE_API_KEY')) {
-                errorMsg = '❌ Error: `YOUTUBE_API_KEY` no configurada.';
-            } else if (error.message.includes('quota')) {
-                errorMsg = '❌ Se agotó la cuota diaria de YouTube Data API.';
-            } else if (error.message.includes('vacía')) {
-                errorMsg = '❌ La IA no pudo generar un resumen. Intenta de nuevo.';
+                errorMsg = '❌ El último video de este canal no tiene subtítulos generados aún.';
+            } else if (error.message === 'NO_VALID_VIDEO') {
+                errorMsg = '❌ Los últimos videos del canal son solo Shorts o Directos. No hay contenido analizable.';
+            } else if (error.message.includes('503')) {
+                errorMsg = '❌ Los servidores de Gemini están saturados en este momento. Intenta en unos minutos.';
             }
 
             bot.editMessageText(errorMsg, {
