@@ -6,36 +6,40 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 // Identificamos canales por su @handle — yt-search los resuelve sin depender de
 // los RSS feeds de YouTube, que son inestables desde finales de 2025.
 const CANALES_YT = {
-    CryptoBruj: { handle: 'Cryptobruj', nombre: 'CryptoBruj' },
-    InformeCrypto: { handle: 'InformeCrypto', nombre: 'Informe Crypto' }
+    CryptoBruj:    { handle: 'Cryptobruj',    query: 'CryptoBruj bitcoin',         nombre: 'CryptoBruj'    },
+    InformeCrypto: { handle: 'Informe Crypto', query: 'Informe Crypto bitcoin',     nombre: 'Informe Crypto' }
 };
 
 // Cache: guardamos el ID del último video visto por canal para detectar novedades
 let ultimosVideos = { CryptoBruj: null, InformeCrypto: null };
 
 // ─── Obtener último video de un canal via yt-search ──────────────────────────
-async function getLatestVideo(handle) {
+async function getLatestVideo(canal) {
     try {
-        // Buscar los videos más recientes del canal
-        const result = await ytSearch({ query: handle, category: 'channel' });
+        // Buscar videos con el query específico del canal
+        const videosResult = await ytSearch(canal.query);
 
-        // Buscar el canal exacto entre los resultados
-        const channel = result.channels.find(c =>
-            c.name.toLowerCase().includes(handle.toLowerCase())
-        ) || result.channels[0];
+        // Normalizar el handle para comparar (quitar espacios, minúsculas)
+        const handleNorm = canal.handle.toLowerCase().replace(/\s+/g, '');
 
-        if (!channel) throw new Error(`Canal no encontrado: ${handle}`);
+        // Filtrar por nombre de autor (flexible: sin espacios, case-insensitive)
+        let videos = videosResult.videos.filter(v => {
+            if (!v.author || !v.author.name) return false;
+            const authorNorm = v.author.name.toLowerCase().replace(/\s+/g, '');
+            return authorNorm.includes(handleNorm) || handleNorm.includes(authorNorm);
+        });
 
-        // Buscar videos del canal por nombre
-        const videosResult = await ytSearch(handle);
-        const videos = videosResult.videos.filter(v =>
-            v.author && v.author.name.toLowerCase().includes(handle.toLowerCase())
-        );
+        // Si no coincide con el autor, tomar el primero del query (suele ser correcto)
+        if (!videos || videos.length === 0) {
+            console.warn(`[YT] No se filtró autor para ${canal.nombre}, usando primer resultado`);
+            videos = videosResult.videos;
+        }
 
         if (!videos || videos.length === 0) throw new Error('No se encontraron videos');
 
         // El primer resultado es el más reciente
         const ultimo = videos[0];
+        console.log(`[YT] Último video de ${canal.nombre}: "${ultimo.title}" (${ultimo.ago})`);
         return {
             id: ultimo.videoId,
             url: `https://www.youtube.com/watch?v=${ultimo.videoId}`,
@@ -72,7 +76,8 @@ async function generarResumenIA(video, nombreCanal) {
 
         // 2. Enviar a Gemini con el System Prompt del "Camino de DIOS"
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        // gemini-2.0-flash: modelo disponible en el free tier de AI Studio
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
         const prompt = `Actúa como un trader institucional y analista técnico experto en criptomonedas.
 A continuación te proporcionaré la transcripción completa del último análisis del canal "${nombreCanal}".
@@ -119,7 +124,7 @@ async function startYoutubePolling(enviarTelegramFn) {
     async function chequearNuevosVideos() {
         for (const [clave, canal] of Object.entries(CANALES_YT)) {
             try {
-                const video = await getLatestVideo(canal.handle);
+                const video = await getLatestVideo(canal);
                 if (!video) continue;
 
                 // Solo alertar si ya teníamos un video registrado Y es uno nuevo
@@ -195,7 +200,7 @@ function setupYoutubeCommands(bot) {
 
         try {
             // 1. Obtener último video
-            const video = await getLatestVideo(canal.handle);
+            const video = await getLatestVideo(canal);
             if (!video) {
                 return bot.editMessageText(
                     '❌ No se pudo obtener el último video. Intenta de nuevo en un momento.',
