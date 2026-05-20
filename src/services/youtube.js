@@ -4,12 +4,12 @@ const { GoogleGenAI } = require('@google/genai');
 // ─── Configuración de Canales ─────────────────────────────────────────────────
 // Channel IDs oficiales de YouTube (verificados)
 const CANALES_YT = {
-    CryptoBruj: { channelId: 'UChYI1ptK3fy06LzLnwsm8pA', nombre: 'CryptoBruj' },
+    CryptoBruj: { channelId: 'UChYI1ptK3fy06LzLnwsm8pA', nombre: 'Cryptobruj' },
     InformeCrypto: { channelId: 'UCccJ73p62TFlX1ImgWEdp4g', nombre: 'Informe Crypto' }
 };
 
 // Cache: ID del último video detectado por canal (evita alertas retroactivas)
-let ultimosVideos = { CryptoBruj: null, InformeCrypto: null };
+let ultimosVideos = { Cryptobruj: null, InformeCrypto: null };
 
 // ─── PROMPT DEL SISTEMA — "Camino de DIOS" ───────────────────────────────────
 function buildPrompt(nombreCanal, titulo, descripcion) {
