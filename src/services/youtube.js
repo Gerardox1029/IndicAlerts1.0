@@ -26,7 +26,7 @@ ${descripcion || '(Sin descripción disponible)'}
 
 ---
 
-DEBES generar tu respuesta ESTRICTAMENTE con este formato Markdown exacto. No agregues nada fuera de la plantilla:
+DEBES generar tu respuesta ESTRICTAMENTE con este formato Markdown exacto (precios en negrita). No agregues nada fuera de la plantilla y no superes las 75 palabras, sé lo más puntual posible:
 
 🎥 **Resumen del nuevo video de @${nombreCanal}**
 
@@ -58,9 +58,10 @@ async function getLatestVideo(canalKey) {
     const params = {
         part: 'snippet',
         channelId: canal.channelId,
-        maxResults: 1,
+        maxResults: 3,
         order: 'date',
         type: 'video',
+        videoDuration: 'medium', // 🚀 FILTRO: Solo videos de entre 4 y 20 minutos (o 'long' para >20 min)
         key: apiKey
     };
 
