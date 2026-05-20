@@ -1,11 +1,12 @@
 # Base image with Node.js
 FROM node:20-slim
 
-# Install Python and build dependencies
+# Install Python, ffmpeg (requerido por yt-dlp) y build dependencies
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     python3-venv \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
