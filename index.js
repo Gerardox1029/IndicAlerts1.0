@@ -3,6 +3,8 @@ const { connectDB, loadUsers } = require('./src/db/mongo');
 const { initBot, setProcesarMercado } = require('./src/bot');
 const { startServer } = require('./src/server');
 const { startMarketLoop, procesarMercado } = require('./src/engine/loop');
+const { enviarTelegram } = require('./src/bot');
+const { startYoutubePolling } = require('./src/services/youtube');
 
 async function main() {
     console.log('🚀 Iniciando IndicAlerts Ditox (Modularizado)...');
@@ -22,6 +24,9 @@ async function main() {
 
     // 5. Iniciar Bucle de Mercado
     startMarketLoop();
+
+    // 6. Iniciar Polling de Youtube
+    startYoutubePolling(enviarTelegram);
 }
 
 main().catch(err => {

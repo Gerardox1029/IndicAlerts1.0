@@ -2,8 +2,6 @@ process.env.NTBA_FIX_350 = 1;
 const TelegramBot = require('node-telegram-bot-api');
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
-const crypto = require('crypto');
 const {
     TELEGRAM_TOKEN,
     TARGET_GROUP_ID,
@@ -18,6 +16,7 @@ const { saveUser, Sticker, Audio } = require('./db/mongo');
 const { fetchData } = require('./api/binance');
 const { calcularIndicadores, calcularTICK } = require('./engine/indicators');
 const { getPeruTime, formatPrice } = require('./utils/helpers');
+const { setupYoutubeCommands } = require('./services/youtube');
 // dateStr removed - now using getPeruTime()
 
 // Helper state local pointers
@@ -65,77 +64,50 @@ async function loadStickers() {
     }
 }
 
-async function fetchAndSaveAudio(fileId, fileUniqueId) {
-    if (!bot) return null;
-    try {
-        const link = await bot.getFileLink(fileId);
-        const response = await axios.get(link, { responseType: 'arraybuffer' });
-        const base64 = Buffer.from(response.data).toString('base64');
-        const hash = crypto.createHash('md5').update(base64).digest('hex');
-        
-        const existing = await Audio.findOne({ hash });
-        if (existing) return existing;
-
-        const newAudio = await Audio.create({
-            fileId: fileId,
-            uniqueId: fileUniqueId || hash,
-            dataBase64: base64,
-            hash: hash
-        });
-        console.log(`🎵 Audio hasheado y guardado en DB: ${hash}`);
-        return newAudio;
-    } catch (e) {
-        console.error("Error descargando/hasheando audio:", e.message);
-        return null;
-    }
-}
-
 async function loadAudios() {
     try {
         const audios = await Audio.find({});
         if (audios.length > 0) {
-            state.audioDatabase.splice(0, state.audioDatabase.length, ...audios);
+            state.audioDatabase.splice(0, state.audioDatabase.length, ...audios.map(a => a.fileId));
             console.log(`🎵 Audios cargados de MongoDB: ${state.audioDatabase.length}`);
+        } else if (fs.existsSync(AUDIOS_FILE)) {
+            const data = JSON.parse(fs.readFileSync(AUDIOS_FILE, 'utf8'));
+            state.audioDatabase.splice(0, state.audioDatabase.length, ...data);
         }
     } catch (e) {
         console.error('Error cargando audios:', e);
     }
 }
 
-async function migrateAudiosJson() {
-    if (fs.existsSync(AUDIOS_FILE) && bot) {
+async function saveSticker(fileId) {
+    if (!state.stickyDatabase.includes(fileId)) {
+        state.stickyDatabase.push(fileId);
+        // Save to Mongo
         try {
-            const data = JSON.parse(fs.readFileSync(AUDIOS_FILE, 'utf8'));
-            for (const fileId of data) {
-                const exists = await Audio.findOne({ fileId });
-                if (!exists) {
-                    console.log(`Migrando audio de JSON a Mongo: ${fileId}`);
-                    const result = await fetchAndSaveAudio(fileId, null);
-                    if (result && !state.audioDatabase.find(a => a.hash === result.hash)) {
-                        state.audioDatabase.push(result);
-                    }
-                }
-            }
-        } catch(e) {
-            console.error('Error migrando audios JSON', e);
-        }
+            await Sticker.create({ fileId });
+            console.log(`🎨 Nuevo sticker guardado en DB: ${fileId}`);
+        } catch (e) { console.error("Error guardando sticker en DB", e); }
+
+        // Backup to File
+        fs.writeFileSync(STICKERS_FILE, JSON.stringify(state.stickyDatabase, null, 2));
+        return true;
     }
+    return false;
 }
 
-async function saveAudioMsg(msg, chatId) {
-    const fileId = msg.audio ? msg.audio.file_id : msg.voice.file_id;
-    const fileUniqueId = msg.audio ? msg.audio.file_unique_id : msg.voice.file_unique_id;
-    
-    bot.sendMessage(chatId, `⏳ Procesando y hasheando audio...`);
-    const result = await fetchAndSaveAudio(fileId, fileUniqueId);
-    if (result) {
-        if (!state.audioDatabase.find(a => a.hash === result.hash)) {
-            state.audioDatabase.push(result);
-        }
-        bot.sendMessage(chatId, `✅ Audio guardado exitosamente en la base de datos (Hash: ${result.hash.substring(0,8)}).`);
-    } else {
-        bot.sendMessage(chatId, `❌ Error procesando el audio.`);
+async function saveAudio(fileId) {
+    if (!state.audioDatabase.includes(fileId)) {
+        state.audioDatabase.push(fileId);
+        // Save to Mongo
+        try {
+            await Audio.create({ fileId });
+            console.log(`🎵 Nuevo audio guardado en DB: ${fileId}`);
+        } catch (e) { console.error("Error guardando audio en DB", e); }
+
+        fs.writeFileSync(AUDIOS_FILE, JSON.stringify(state.audioDatabase, null, 2));
+        return true;
     }
+    return false;
 }
 
 // Initial Load
@@ -286,7 +258,6 @@ function initBot() {
         bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
         console.log('Telegram Bot iniciado con polling.');
         setupListeners();
-        migrateAudiosJson();
     } else {
         console.warn('TELEGRAM_TOKEN no configurado. El bot no funcionará.');
     }
@@ -353,8 +324,8 @@ function setupListeners() {
         });
     });
 
-    // /sexo
-    bot.onText(/\/(sexo|reportAlfaroMuerdeAlmohadas)/i, async (msg) => {
+    // /reportAlfaroMuerdeAlmohadas
+    bot.onText(/\/sexo/i, async (msg) => {
         const chatId = msg.chat.id;
         const threadId = msg.message_thread_id;
         const sendOptions = threadId ? { message_thread_id: threadId } : {};
@@ -366,14 +337,9 @@ function setupListeners() {
 
         const randomAudio = state.audioDatabase[Math.floor(Math.random() * state.audioDatabase.length)];
         try {
-            if (randomAudio.dataBase64) {
-                const buffer = Buffer.from(randomAudio.dataBase64, 'base64');
-                await bot.sendVoice(chatId, buffer, sendOptions);
-            } else {
-                await bot.sendVoice(chatId, randomAudio.fileId, sendOptions);
-            }
+            await bot.sendAudio(chatId, randomAudio, sendOptions);
         } catch (e) {
-            console.error("Error enviando audio/voz:", e.message);
+            await bot.sendVoice(chatId, randomAudio, sendOptions).catch(err => console.error("Error enviando audio/voz:", err.message));
         }
     });
 
@@ -429,9 +395,9 @@ function setupListeners() {
     // /[symbol]
     bot.onText(/^\/([a-zA-Z0-9]+)$/i, async (msg, match) => {
         const rawSymbol = match[1].trim().toUpperCase();
-        
+
         // Ignorar comandos conocidos
-        const ignoredCommands = ['START', 'PANEL', 'ALSISON', 'REPORTALFAROMUERDEALMOHADAS', 'SEXO', 'REPORTALL', 'TIPS', 'AYUDA'];
+        const ignoredCommands = ['START', 'PANEL', 'ALSISON', 'REPORTALFAROMUERDEALMOHADAS', 'REPORTALL', 'TIPS', 'AYUDA', 'YT'];
         if (ignoredCommands.includes(rawSymbol)) return;
         if (rawSymbol.startsWith('TICK') || rawSymbol.startsWith('TIP') || rawSymbol.startsWith('SIMULATE')) return;
 
@@ -511,8 +477,8 @@ By Ditox🔮
                     { text: `🔴 tickS`, callback_data: `tickS_${symbol}` }
                 ]];
 
-                await bot.sendMessage(chatId, reportMsg, { 
-                    message_thread_id: threadId, 
+                await bot.sendMessage(chatId, reportMsg, {
+                    message_thread_id: threadId,
                     parse_mode: 'HTML',
                     reply_markup: { inline_keyboard }
                 });
@@ -616,7 +582,7 @@ By Ditox🔮
 
 🤡 <b><u>ENTRETENIMIENTO</u></b>
 🔸 <code>/alsison</code> - Audio secreto 1
-🔸 <code>/sexo</code> - Audio secreto 2
+🔸 <code>/reportAlfaroMuerdeAlmohadas</code> - Audio secreto 2
 
 <i>¡Mantente siempre alerta con IndicAlerts!</i> 🚀💎
 `;
@@ -632,9 +598,9 @@ By Ditox🔮
             const assetPath = path.join(__dirname, 'assets', `tip${i}.png`);
             if (fs.existsSync(assetPath)) {
                 const randomEmoji = psicotradingEmojis[Math.floor(Math.random() * psicotradingEmojis.length)];
-                await bot.sendPhoto(chatId, fs.createReadStream(assetPath), { 
+                await bot.sendPhoto(chatId, fs.createReadStream(assetPath), {
                     caption: randomEmoji,
-                    message_thread_id: threadId 
+                    message_thread_id: threadId
                 });
             } else {
                 bot.sendMessage(chatId, `❌ Tip ${i} no encontrado.`, { message_thread_id: threadId });
@@ -653,11 +619,11 @@ By Ditox🔮
         const data = query.data;
         const chatId = query.message.chat.id;
         const threadId = query.message.message_thread_id;
-        
+
         if (data.startsWith('tick')) {
             const terrain = data.startsWith('tickS') ? 'SHORT' : 'LONG';
             const symbol = data.split('_')[1];
-            
+
             bot.sendMessage(chatId, `⏳ Calculando TICK para ${symbol} en terreno de ${terrain}...`, { message_thread_id: threadId });
 
             const marketData = await fetchData(symbol, '2h', 100);
@@ -694,8 +660,11 @@ By Ditox🔮
         }
 
         // Audio capture
-        if ((msg.audio || msg.voice) && (String(chatId) === '1985505500' || (msg.from && (msg.from.username === 'ditox_18' || msg.from.username === 'admin')))) {
-            saveAudioMsg(msg, chatId);
+        if ((msg.audio || msg.voice) && String(chatId) === '1985505500') {
+            const fileId = msg.audio ? msg.audio.file_id : msg.voice.file_id;
+            if (saveAudio(fileId)) {
+                bot.sendMessage(chatId, `✅ Audio guardado en la base de datos.`);
+            }
             return;
         }
 
@@ -712,6 +681,9 @@ By Ditox🔮
         const username = resolveChatName(msg);
         saveUser(chatId, username);
     });
+
+    // Añadir comandos de YouTube
+    setupYoutubeCommands(bot);
 
     console.log('Bot escuchando comandos y capturando usuarios...');
 }
