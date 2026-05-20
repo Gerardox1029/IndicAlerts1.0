@@ -13,38 +13,18 @@ let ultimosVideos = { Cryptobruj: null, InformeCrypto: null };
 
 // ─── PROMPT DEL SISTEMA — "Camino de DIOS" ───────────────────────────────────
 function buildPrompt(nombreCanal, titulo, descripcion) {
-    return `Actúa como un trader institucional y analista técnico experto en criptomonedas.
+    return `Actúa como un analista financiero experto. Basándote exclusivamente en la transcripción proporcionada, genera un resumen técnico y fundamental sobre Bitcoin. Sigue estrictamente este formato:
 
-A continuación recibirás el TÍTULO y la DESCRIPCIÓN del último video publicado por el canal "${nombreCanal}".
-Basándote en estos textos, debes inferir el análisis técnico del mercado, identificar la dirección del precio de BTC u otras criptos, zonas de precio clave, indicadores relevantes (RSI, MACD, EMA, liquidaciones, soportes/resistencias) y la narrativa técnica que el analista propone.
+Visión [Nombre del autor]: [Resume el estado actual del precio, tendencia y zonas clave de soporte/resistencia o liquidación mencionadas].
 
-TÍTULO DEL VIDEO:
-"${titulo}"
+Fundamentales: [Detalla los eventos macro o noticias específicas que afectan la volatilidad y el sentido del movimiento].
 
-DESCRIPCIÓN DEL VIDEO:
-${descripcion || '(Sin descripción disponible)'}
+Reglas:
 
----
-
-DEBES generar tu respuesta ESTRICTAMENTE con este formato Markdown exacto (precios en negrita). No agregues nada fuera de la plantilla y no superes las 75 palabras, sé lo más puntual posible:
-
-🎥 **Resumen del nuevo video de @${nombreCanal}**
-
-🔸 **[Idea principal 1 — extráela del título/descripción]**
-[Explicación técnica concisa y directa]
-
-🔸 **[Idea principal 2 — extráela del título/descripción]**
-[Explicación técnica concisa y directa]
-
-🛤️ **Camino de DIOS (Análisis de Precio):**
-[Precio Actual estimado/mencionado] ➡️ [Precio Objetivo 1] [📉/📈] ➡️ [Precio Objetivo 2] [📉/📈]
-Explicación: [Justificación técnica detallada. Si hay precios numéricos en el título o descripción, úsalos. Si no, infiere zonas lógicas según el contexto del video. Menciona liquidaciones, divergencias y ondas si el analista las señala].
-
-Reglas inquebrantables:
-1. Extrae SOLO datos que aparezcan en el título o descripción. NO inventes cifras que no estén presentes.
-2. Si no hay precios exactos, usa el contexto para inferir zonas técnicas (ej: "soporte actual ➡️ resistencia clave 📈").
-3. No saludes, no te despidas y NO agregues texto fuera de la plantilla.
-4. Si hay valores de RSI, precios o porcentajes mencionados, inclúyelos con precisión.`;
+Sé directo y conciso.
+Usa emojis relacionados (ej: 📈, 📉, ₿).
+No añadas introducciones, conclusiones ni texto innecesario fuera de la estructura solicitada.
+Si hay precios específicos, inclúyelos siempre.`;
 }
 
 // ─── Obtener último video via YouTube Data API v3 ────────────────────────────
@@ -157,7 +137,7 @@ function setupYoutubeCommands(bot) {
         const opciones = {
             reply_markup: {
                 inline_keyboard: [[
-                    { text: '🔮 Cryptobruj', callback_data: 'yt_CryptoBruj' },
+                    { text: '🔮 Cryptobruj', callback_data: 'yt_Cryptobruj' },
                     { text: '📊 Informe Crypto', callback_data: 'yt_InformeCrypto' }
                 ]]
             }
