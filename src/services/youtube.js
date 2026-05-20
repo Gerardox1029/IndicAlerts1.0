@@ -155,10 +155,9 @@ function setupYoutubeCommands(bot) {
         const threadId = msg.message_thread_id;
 
         const opciones = {
-            parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [[
-                    { text: '🔮 CryptoBruj', callback_data: 'yt_CryptoBruj' },
+                    { text: '🔮 Cryptobruj', callback_data: 'yt_CryptoBruj' },
                     { text: '📊 Informe Crypto', callback_data: 'yt_InformeCrypto' }
                 ]]
             }
