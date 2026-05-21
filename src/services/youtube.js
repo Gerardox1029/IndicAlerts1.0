@@ -27,25 +27,36 @@ function getDurationInSeconds(duration) {
 
 // ─── PROMPT DEL SISTEMA ──────────────────────────────────────────────────────
 function buildPrompt(nombreCanal, titulo, transcripcion) {
-    return `Actúa como un analista financiero experto. Te proporcionaré el título y la transcripción completa del último video de YouTube de \"${nombreCanal}\".
+    return `Actúa como un analista financiero experto. Te proporcionaré el título y la transcripción completa del último video de YouTube de "${nombreCanal}".
     
-Título del video: \"${titulo}\"
+Título del video: "${titulo}"
 Transcripción:
 """
 ${transcripcion}
 """
 
-Basándote exclusivamente en esta transcripción, genera un resumen técnico y fundamental sobre Bitcoin. Sigue estrictamente este formato:
+Tu objetivo es extraer SOLO la información técnica y fundamental vital para Bitcoin y el mercado cripto. Ignora por completo noticias macroeconómicas, de acciones o materias primas que no tengan un impacto directo y claro en las criptomonedas.
 
-Visión ${nombreCanal}: [Resume el estado actual del precio, tendencia y zonas clave de soporte/resistencia o liquidación mencionadas].
+Genera el resumen siguiendo ESTRICTAMENTE esta estructura exacta (incluyendo los saltos de línea):
 
-Fundamentales: [Detalla los eventos macro o noticias específicas que afectan la volatilidad y el sentido del movimiento].
+Visión ${nombreCanal} ([alcista/bajista/neutral]): [Breve estado actual ₿]
 
-Reglas:
-1. Sé directo y conciso.
-2. Usa emojis relacionados (ej: 📈, 📉, ₿).
-3. No añadas introducciones, conclusiones ni texto innecesario fuera de la estructura solicitada.
-4. Si hay precios específicos, inclúyelos siempre.`;
+Idea principal: [Resumen conciso del movimiento esperado con emoji direccional 📈/📉/🟢/🔴]
+
+Resistencias clave: [Listado de zonas de rechazo]
+
+Soportes/Objetivos: [Listado de zonas de liquidación o rebote]
+
+Indicadores: [Mención concisa de indicadores y su señal]
+
+Fundamentales:
+* [Evento]: [Dato clave en 1 línea] ([alcista/bajista/neutral] crypto)
+
+Reglas OBLIGATORIAS:
+1. Sé extremadamente puntual, directo y estilo telegrama. Cero introducciones, saludos o conclusiones.
+2. Resalta TODOS los precios exactos en negrita usando UN SOLO asterisco por lado (Ejemplo: *$73,000* o *$79,500*). NUNCA uses dobles asteriscos.
+3. En la sección "Fundamentales", solo incluye eventos si afectan a cripto, e indica obligatoriamente su sesgo al final entre paréntesis.
+4. Mantén los saltos de línea entre cada sección tal cual se muestra en la estructura para facilitar la lectura rápida.`;
 }
 
 // ─── Obtener último video VÁLIDO via RSS + YouTube API (Costo: 1 punto) ──────
