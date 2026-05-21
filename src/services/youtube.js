@@ -17,19 +17,19 @@ let ultimosVideos = { CryptoBruj: null, InformeCrypto: null };
 
 // Convierte el formato ISO 8601 de YouTube (ej. PT15M33S) a segundos totales
 function getDurationInSeconds(duration) {
-    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
     if (!match) return 0;
-    const hours = (parseInt(match[1]) || 0);
-    const minutes = (parseInt(match[2]) || 0);
-    const seconds = (parseInt(match[3]) || 0);
+    const hours = parseInt(match[1]) || 0;
+    const minutes = parseInt(match[2]) || 0;
+    const seconds = parseInt(match[3]) || 0;
     return hours * 3600 + minutes * 60 + seconds;
 }
 
 // ─── PROMPT DEL SISTEMA ──────────────────────────────────────────────────────
 function buildPrompt(nombreCanal, titulo, transcripcion) {
-    return `Actúa como un analista financiero experto. Te proporcionaré el título y la transcripción completa del último video de YouTube de "${nombreCanal}".
+    return `Actúa como un analista financiero experto. Te proporcionaré el título y la transcripción completa del último video de YouTube de \"${nombreCanal}\".
     
-Título del video: "${titulo}"
+Título del video: \"${titulo}\"
 Transcripción:
 """
 ${transcripcion}
@@ -51,9 +51,9 @@ Reglas:
 // ─── Obtener último video VÁLIDO via RSS + YouTube API (Costo: 1 punto) ──────
 async function getLatestValidVideo(canalKey) {
     const canal = CANALES_YT[canalKey];
-    const apiKey = process.env.YOUTUBE_API_KEY;
+    const apiKey = process.env.YT_API_V3;
 
-    if (!apiKey) throw new Error('YOUTUBE_API_KEY no está configurada en .env');
+    if (!apiKey) throw new Error('YT_API_V3 no está configurada en .env');
 
     // 1. Leer el RSS gratuito de YouTube (Costo: 0 puntos)
     const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${canal.channelId}`;
@@ -126,6 +126,9 @@ async function generarResumenIA(video, nombreCanal) {
     let analisisIA = response.text;
     if (!analisisIA) throw new Error('Respuesta vacía');
 
+    // Limpieza de caracteres conflictivos para Telegram
+    analisisIA = analisisIA.replace(/\*\*/g, '');
+
     const publicado = new Date(video.publishedAt);
     const horasAtras = Math.floor((Date.now() - publicado) / 3600000);
     const diasAtras = Math.floor(horasAtras / 24);
@@ -133,7 +136,7 @@ async function generarResumenIA(video, nombreCanal) {
         : horasAtras < 24 ? `Hace ${horasAtras} horas`
             : `Hace ${diasAtras} día${diasAtras > 1 ? 's' : ''}`;
 
-    analisisIA += `\n\n⏱️ Publicado: ${tiempoStr}\n🔗 [Ver video original](${video.url})`;
+    analisisIA += `\n\n⏱️ Publicado: ${tiempoStr}\n🔗 <a href=\"${video.url}\">Ver video original</a>`;
     return analisisIA;
 }
 
@@ -189,8 +192,8 @@ function setupYoutubeCommands(bot) {
 
         bot.sendMessage(
             chatId,
-            '🤖 *Resumen de Análisis (YouTube):*\nSelecciona un canal para extraer el último video (ignorando Shorts/Directos):',
-            opciones
+            '🤖 <b>Resumen de Análisis (YouTube):</b>\nSelecciona un canal para extraer el último video (ignorando Shorts/Directos):',
+            { ...opciones, parse_mode: 'HTML' }
         );
     });
 
@@ -208,8 +211,8 @@ function setupYoutubeCommands(bot) {
 
         const mensajeCarga = await bot.sendMessage(
             chatId,
-            `🔍 Buscando y analizando el último video válido de *${canal.nombre}*...\n_Ignorando Shorts y transmisiones en vivo._`,
-            { parse_mode: 'Markdown' }
+            `🔍 Buscando y analizando el último video válido de <b>${canal.nombre}</b>...\n_Ignorando Shorts y transmisiones en vivo._`,
+            { parse_mode: 'HTML' }
         );
 
         try {
@@ -219,7 +222,7 @@ function setupYoutubeCommands(bot) {
             await bot.editMessageText(resumen, {
                 chat_id: chatId,
                 message_id: mensajeCarga.message_id,
-                parse_mode: 'Markdown',
+                parse_mode: 'HTML',
                 disable_web_page_preview: true
             });
 
@@ -238,8 +241,8 @@ function setupYoutubeCommands(bot) {
             bot.editMessageText(errorMsg, {
                 chat_id: chatId,
                 message_id: mensajeCarga.message_id,
-                parse_mode: 'Markdown'
-            }).catch(() => bot.sendMessage(chatId, errorMsg, { parse_mode: 'Markdown' }));
+                parse_mode: 'HTML'
+            }).catch(() => bot.sendMessage(chatId, errorMsg, { parse_mode: 'HTML' }));
         }
     });
 }
