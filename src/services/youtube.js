@@ -55,47 +55,55 @@ async function getLatestValidVideo(canalKey) {
 
     if (!apiKey) throw new Error('YT_API_V3 no está configurada en .env');
 
-    // 1. Leer el RSS gratuito de YouTube (Costo: 0 puntos)
-    const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${canal.channelId}`;
-    const feed = await rssParser.parseURL(rssUrl);
+    try {
+        // 1. Leer el RSS gratuito de YouTube (Costo: 0 puntos)
+        const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${canal.channelId}`;
+        const feed = await rssParser.parseURL(rssUrl);
 
-    if (!feed.items || feed.items.length === 0) {
-        throw new Error(`No se encontraron videos en el RSS de ${canal.nombre}`);
-    }
-
-    // Tomar los últimos 3 videos del RSS para asegurar que encontramos uno válido
-    // El ID en el RSS viene con formato "yt:video:ID", extraemos solo el ID.
-    const videoIds = feed.items.slice(0, 3).map(item => item.id.replace('yt:video:', ''));
-
-    // 2. Consultar detalles de esos 3 videos de un solo golpe (Costo: 1 punto)
-    const apiUrl = 'https://www.googleapis.com/youtube/v3/videos';
-    const params = {
-        part: 'snippet,contentDetails',
-        id: videoIds.join(','),
-        key: apiKey
-    };
-
-    const response = await axios.get(apiUrl, { params });
-    const items = response.data.items;
-
-    // 3. Filtrar Shorts (< 60s) y Directos/Estrenos
-    for (const item of items) {
-        const durationSecs = getDurationInSeconds(item.contentDetails.duration);
-        const isLive = item.snippet.liveBroadcastContent !== 'none'; // Descarta 'live' y 'upcoming'
-
-        // Si dura más de 60 segundos y no es un directo, ¡ES NUESTRO VIDEO!
-        if (durationSecs >= 60 && !isLive) {
-            return {
-                id: item.id,
-                url: `https://www.youtube.com/watch?v=${item.id}`,
-                title: item.snippet.title,
-                publishedAt: item.snippet.publishedAt,
-                channelTitle: item.snippet.channelTitle
-            };
+        if (!feed.items || feed.items.length === 0) {
+            throw new Error(`No se encontraron videos en el RSS de ${canal.nombre}`);
         }
-    }
 
-    throw new Error('NO_VALID_VIDEO');
+        // Tomar los últimos 3 videos del RSS para asegurar que encontramos uno válido
+        const videoIds = feed.items.slice(0, 3).map(item => item.id.replace('yt:video:', ''));
+
+        // 2. Consultar detalles de esos 3 videos de un solo golpe (Costo: 1 punto)
+        const apiUrl = 'https://www.googleapis.com/youtube/v3/videos';
+        const params = {
+            part: 'snippet,contentDetails',
+            id: videoIds.join(','),
+            key: apiKey
+        };
+
+        const response = await axios.get(apiUrl, { params });
+
+        if (response.status !== 200) {
+            throw new Error(`YouTube API error: Status code ${response.status}`);
+        }
+
+        const items = response.data.items;
+
+        // 3. Filtrar Shorts (< 60s) y Directos/Estrenos
+        for (const item of items) {
+            const durationSecs = getDurationInSeconds(item.contentDetails.duration);
+            const isLive = item.snippet.liveBroadcastContent !== 'none'; // Descarta 'live' y 'upcoming'
+
+            if (durationSecs >= 60 && !isLive) {
+                return {
+                    id: item.id,
+                    url: `https://www.youtube.com/watch?v=${item.id}`,
+                    title: item.snippet.title,
+                    publishedAt: item.snippet.publishedAt,
+                    channelTitle: item.snippet.channelTitle
+                };
+            }
+        }
+
+        throw new Error('NO_VALID_VIDEO');
+    } catch (error) {
+        console.error(`[YT] Error al obtener el último video válido de ${canal.nombre}:`, error.message);
+        throw error;
+    }
 }
 
 // ─── Extraer Transcripción ───────────────────────────────────────────────────
@@ -147,31 +155,35 @@ async function startYoutubePolling(enviarTelegramFn) {
             try {
                 const video = await getLatestValidVideo(clave);
 
-                // Si es el primer ciclo, solo registramos el ID sin alertar
                 if (ultimosVideos[clave] === null) {
                     ultimosVideos[clave] = video.id;
                     continue;
                 }
 
-                // Si hay un video nuevo válido
                 if (ultimosVideos[clave] !== video.id) {
                     console.log(`[ALERTA] ¡Nuevo video VÁLIDO de ${CANALES_YT[clave].nombre}! → ${video.title}`);
-                    ultimosVideos[clave] = video.id; // Actualizamos rápido para evitar alertas duplicadas si Gemini tarda
+                    ultimosVideos[clave] = video.id;
 
                     const resumen = await generarResumenIA(video, CANALES_YT[clave].nombre);
                     await enviarTelegramFn(resumen, 'BTCUSDT', { skipSticker: true });
                 }
             } catch (error) {
-                if (error.message !== 'NO_VALID_VIDEO') {
+                if (error.message === 'NO_VALID_VIDEO') {
+                    console.warn(`[YT] No hay videos válidos para ${CANALES_YT[clave].nombre}.`);
+                } else {
                     console.error(`[YT] Error en polling de ${CANALES_YT[clave].nombre}:`, error.message);
                 }
             }
         }
     }
 
-    await chequearNuevosVideos();
-    console.log('✅ Polling optimizado iniciado (RSS + YT API a 1 punto). Filtrando Shorts/Directos.');
-    setInterval(chequearNuevosVideos, 15 * 60 * 1000);
+    try {
+        await chequearNuevosVideos();
+        console.log('✅ Polling optimizado iniciado (RSS + YT API a 1 punto). Filtrando Shorts/Directos.');
+        setInterval(chequearNuevosVideos, 15 * 60 * 1000);
+    } catch (error) {
+        console.error('[YT] Error crítico al iniciar el polling:', error.message);
+    }
 }
 
 // ─── FLUJO 2: Comando Manual /yt ─────────────────────────────────────────────
@@ -227,7 +239,7 @@ function setupYoutubeCommands(bot) {
             });
 
         } catch (error) {
-            console.error('[YT] Error en callback /yt:', error.message);
+            console.error(`[YT] Error en callback /yt para ${canal.nombre}:`, error.message);
 
             let errorMsg = '❌ Ocurrió un error procesando el video.';
             if (error.message === 'NO_TRANSCRIPT') {
@@ -236,6 +248,8 @@ function setupYoutubeCommands(bot) {
                 errorMsg = '❌ Los últimos videos del canal son solo Shorts o Directos. No hay contenido analizable.';
             } else if (error.message.includes('503')) {
                 errorMsg = '❌ Los servidores de Gemini están saturados en este momento. Intenta en unos minutos.';
+            } else {
+                errorMsg = `❌ Error inesperado: ${error.message}`;
             }
 
             bot.editMessageText(errorMsg, {
