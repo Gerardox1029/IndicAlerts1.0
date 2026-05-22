@@ -13,17 +13,6 @@ const CANALES_YT = {
 
 let ultimosVideos = { CryptoBruj: null, InformeCrypto: null };
 
-// ─── Caché de Análisis de Transcripts (Evitar sobre-carga de IA) ──────────────
-const videoAnalysisCache = {};
-
-function getCachedAnalysis(videoId) {
-    return videoAnalysisCache[videoId] || null;
-}
-
-function cacheAnalysis(videoId, analysis) {
-    videoAnalysisCache[videoId] = analysis;
-}
-
 // ─── Funciones Auxiliares ────────────────────────────────────────────────────
 
 // Convierte el formato ISO 8601 de YouTube (ej. PT15M33S) a segundos totales
@@ -143,13 +132,6 @@ async function getTranscript(videoId) {
 async function generarResumenIA(video, nombreCanal) {
     if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY no configurada');
 
-    // Verificar si ya existe análisis en caché para este video
-    const cachedAnalysis = getCachedAnalysis(video.id);
-    if (cachedAnalysis) {
-        console.log(`[CACHE] Usando análisis previo del video "${video.title}"`);
-        return cachedAnalysis;
-    }
-
     const transcripcion = await getTranscript(video.id);
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const prompt = buildPrompt(nombreCanal, video.title, transcripcion);
@@ -175,9 +157,6 @@ async function generarResumenIA(video, nombreCanal) {
             : `Hace ${diasAtras} día${diasAtras > 1 ? 's' : ''}`;
 
     analisisIA += `\n\n⏱️ Publicado: ${tiempoStr}\n🔗 <a href=\"${video.url}\">Ver video original</a>`;
-    
-    // Guardar en caché para evitar re-análisis
-    cacheAnalysis(video.id, analisisIA);
     
     return analisisIA;
 }
