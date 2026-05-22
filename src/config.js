@@ -3,13 +3,13 @@ const path = require('path');
 
 const SYMBOLS = [
     'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', // Large Caps
-    'DOGEUSDT', 'AVAXUSDT', 'ADAUSDT', 'BCHUSDT', 'HYPEUSDT', 'AAVEUSDT',// Mid Caps
+    'DOGEUSDT', 'AVAXUSDT', 'ADAUSDT', 'BCHUSDT','AAVEUSDT',// Mid Caps
     'RENDERUSDT', 'NEARUSDT', 'WLDUSDT', 'SUIUSDT' // Small Caps
 ];
 
 const CATEGORIES = {
     'Large Caps': ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT'],
-    'Mid Caps': ['DOGEUSDT', 'AVAXUSDT', 'ADAUSDT', 'BCHUSDT', 'HYPEUSDT', 'AAVEUSDT'],
+    'Mid Caps': ['DOGEUSDT', 'AVAXUSDT', 'ADAUSDT', 'BCHUSDT','AAVEUSDT'],
     'Small Caps': ['RENDERUSDT', 'NEARUSDT', 'WLDUSDT', 'SUIUSDT']
 };
 

@@ -24,18 +24,6 @@ async function fetchData(symbol, interval, limit = 100) {
     const spotUrl = `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
     const futuresUrl = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
 
-    const shouldUseFuturesDirectly = symbol === 'HYPEUSDT';
-
-    if (shouldUseFuturesDirectly) {
-        try {
-            const data = await fetchKlines(futuresUrl);
-            return mapKlines(data);
-        } catch (error) {
-            console.error(`Error fetching futures data for ${symbol} ${interval}:`, error.response?.status || '', error.response?.data || error.message);
-            return null;
-        }
-    }
-
     try {
         const data = await fetchKlines(spotUrl);
         return mapKlines(data);
