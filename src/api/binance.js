@@ -4,8 +4,8 @@ async function fetchData(symbol, interval, limit = 100) {
     try {
         let url = `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
 
-        // PIPPIM/USDT is Futures Only
-        if (symbol === 'PIPPINUSDT') {
+        // HYPEUSDT is Futures Only
+        if (symbol === 'HYPEUSDT') {
             url = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
         }
 
@@ -17,7 +17,7 @@ async function fetchData(symbol, interval, limit = 100) {
         return { closes, highs, lows, closeTimes };
     } catch (error) {
         // Fallback to Futures if spot fails (for other potential mysteries)
-        if (!symbol.includes('PIPPIN')) {
+        if (!symbol.includes('HYPE')) {
             try {
                 const fUrl = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
                 const fResp = await axios.get(fUrl);
