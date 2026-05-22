@@ -39,7 +39,7 @@ Tu objetivo es extraer SOLO la información técnica y fundamental vital para Bi
 
 Genera el resumen siguiendo ESTRICTAMENTE esta estructura exacta (incluyendo los saltos de línea):
 
-Visión ${nombreCanal} ([alcista/bajista/neutral]): [Breve estado actual ₿]
+Visión ${nombreCanal} ([alcista/bajista/neutral]): [Breve estado actual ₿ en MAYÚSCULAS con emoji direccional 📈/📉/🟢/🔴]
 
 Idea principal: [Resumen conciso del movimiento esperado con emoji direccional 📈/📉/🟢/🔴]
 
@@ -47,16 +47,17 @@ Resistencias clave: [Listado de zonas de rechazo]
 
 Soportes/Objetivos: [Listado de zonas de liquidación o rebote]
 
-Indicadores: [Mención concisa de indicadores y su señal]
+Indicadores: [Mención concisa de indicadores y su señal con emoji direccional 📈/📉/🟢/🔴]
 
 Fundamentales:
-* [Evento]: [Dato clave en 1 línea] ([alcista/bajista/neutral] crypto)
+* [Evento]: [Dato clave en 1 línea] ([alcista/bajista/neutral] crypto con emoji direccional 📈/📉/🟢/🔴)
 
 Reglas OBLIGATORIAS:
 1. Sé extremadamente puntual, directo y estilo telegrama. Cero introducciones, saludos o conclusiones.
-2. Resalta TODOS los precios exactos en negrita usando UN SOLO asterisco por lado (Ejemplo: *$73,000* o *$79,500*). NUNCA uses dobles asteriscos.
-3. En la sección "Fundamentales", solo incluye eventos si afectan a cripto, e indica obligatoriamente su sesgo al final entre paréntesis.
-4. Mantén los saltos de línea entre cada sección tal cual se muestra en la estructura para facilitar la lectura rápida.`;
+2. Resalta TODOS los precios exactos en negrita usando las etiquetas <strong>precio</strong>(Ejemplo: <strong>$73,000</strong> o <strong>$79,500</strong>).
+3. Resaltar las palabras  términos relacionados a tendencia con las etiquetas <strong>tendencia</strong> (Ejemplo: <strong>alcista</strong>, <strong>bajista</strong>, <strong>neutral</strong>).
+4. En la sección "Fundamentales", solo incluye eventos si afectan a cripto, e indica obligatoriamente su sesgo al final entre paréntesis.
+5. Mantén los saltos de línea entre cada sección tal cual se muestra en la estructura para facilitar la lectura rápida.`;
 }
 
 // ─── Obtener último video VÁLIDO via RSS + YouTube API (Costo: 1 punto) ──────
