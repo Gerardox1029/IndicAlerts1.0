@@ -60,6 +60,13 @@ const TargetGroupSchema = new mongoose.Schema({
 });
 const TargetGroup = mongoose.model('TargetGroup', TargetGroupSchema);
 
+const YoutubeChannelSchema = new mongoose.Schema({
+    channelId: { type: String, required: true, unique: true },
+    nombre: { type: String, required: true },
+    logoUrl: { type: String, default: '' }
+});
+const YoutubeChannel = mongoose.model('YoutubeChannel', YoutubeChannelSchema);
+
 // Conexión a Base de Datos
 function connectDB() {
     if (MONGODB_URI) {
@@ -136,10 +143,10 @@ module.exports = {
     User,
     loadUsers,
     saveUser,
-    saveUser,
     saveUserToMongo,
     Sticker,
     Audio,
     BitacoraTrade,
-    TargetGroup
+    TargetGroup,
+    YoutubeChannel
 };

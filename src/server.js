@@ -10,7 +10,7 @@ const {
     ADMIN_PASSWORD
 } = require('./config');
 const state = require('./services/state');
-const { saveUserToMongo, User, TargetGroup } = require('./db/mongo');
+const { saveUserToMongo, User, TargetGroup, YoutubeChannel } = require('./db/mongo');
 const { getBot, enviarTelegram, simulateSignalEffect } = require('./bot');
 const { checkConsolidatedAlerts } = require('./engine/loop');
 
@@ -90,6 +90,66 @@ app.delete('/admin/groups/:id', async (req, res) => {
     if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
     try {
         await TargetGroup.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.get('/admin/youtube-channels', async (req, res) => {
+    try {
+        const channels = await YoutubeChannel.find();
+        res.json(channels.map(c => ({ id: c._id, channelId: c.channelId, nombre: c.nombre, logoUrl: c.logoUrl })));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/admin/youtube-channels', async (req, res) => {
+    const { password, channelId, nombre } = req.body;
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
+    try {
+        const axios = require('axios');
+        let logoUrl = '';
+        if (process.env.YT_API_V3) {
+            const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${process.env.YT_API_V3}`;
+            const { data } = await axios.get(url);
+            if (data.items && data.items.length > 0) {
+                logoUrl = data.items[0].snippet.thumbnails.default.url;
+            }
+        }
+        const newChannel = await YoutubeChannel.create({ channelId, nombre, logoUrl });
+        res.json({ success: true, channel: { id: newChannel._id, channelId: newChannel.channelId, nombre: newChannel.nombre, logoUrl: newChannel.logoUrl } });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.put('/admin/youtube-channels/:id', async (req, res) => {
+    const { password, channelId, nombre } = req.body;
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
+    try {
+        const axios = require('axios');
+        let logoUrl = '';
+        if (process.env.YT_API_V3) {
+            const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${process.env.YT_API_V3}`;
+            const { data } = await axios.get(url);
+            if (data.items && data.items.length > 0) {
+                logoUrl = data.items[0].snippet.thumbnails.default.url;
+            }
+        }
+        await YoutubeChannel.findByIdAndUpdate(req.params.id, { channelId, nombre, logoUrl });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.delete('/admin/youtube-channels/:id', async (req, res) => {
+    const { password } = req.body;
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
+    try {
+        await YoutubeChannel.findByIdAndDelete(req.params.id);
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
@@ -675,6 +735,9 @@ app.get('/', (req, res) => {
             <button onclick="showSection('broadcast')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
                 📢 Broadcast a Grupos
             </button>
+            <button onclick="showSection('youtube')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
+                📺 Canales YouTube
+            </button>
         </nav>
 
 
@@ -762,24 +825,51 @@ app.get('/', (req, res) => {
                         La psicología es el 80% del trading. Evitar el <span class="text-red-400 font-bold">TILT</span> (pérdida del control emocional) es la clave absoluta para alcanzar la rentabilidad consistente. Un trader tranquilo sigue su plan; un trader alterado regala su dinero al mercado.
                     </p>
                 </div>
-                <div class="grid grid-cols-3 grid-rows-2 gap-6">
-                    <div class="rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:border-blue-500/50 transition-all hover:scale-105 cursor-pointer" onclick="openTipModal('/src/assets/tip1.png')">
-                        <img src="/src/assets/tip1.png" alt="Tip 1" class="w-full h-auto object-cover">
+                <div class="relative w-full max-w-4xl mx-auto group mt-10">
+                    <!-- Quote Overlay (The Extra Touch) -->
+                    <div class="absolute -top-8 left-1/2 -translate-x-1/2 z-20 w-11/12 max-w-2xl transition-all duration-500 ease-in-out transform hover:-translate-y-1" id="carousel-quote-container">
+                        <div class="bg-gray-900/80 backdrop-blur-md border border-blue-500/40 shadow-[0_10px_30px_rgba(59,130,246,0.2)] rounded-2xl p-5 text-center">
+                            <p id="carousel-quote" class="text-blue-300 font-medium text-sm md:text-base italic transition-opacity duration-300">"El mercado es un dispositivo para transferir dinero del impaciente al paciente."</p>
+                            <p id="carousel-author" class="text-xs text-gray-500 mt-2 font-bold uppercase tracking-wider">- Warren Buffett</p>
+                        </div>
                     </div>
-                    <div class="rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:border-blue-500/50 transition-all hover:scale-105 cursor-pointer" onclick="openTipModal('/src/assets/tip2.png')">
-                        <img src="/src/assets/tip2.png" alt="Tip 2" class="w-full h-auto object-cover">
+
+                    <!-- Carousel Track -->
+                    <div class="overflow-hidden rounded-2xl shadow-2xl border border-gray-700/50 relative pt-8" id="carousel-viewport">
+                        <div class="flex transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)]" id="carousel-track">
+                            <!-- Slides -->
+                            <div class="min-w-full flex justify-center items-center bg-gray-900/50 p-2">
+                                <img src="/src/assets/tip1.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-300" onclick="openTipModal('/src/assets/tip1.png')">
+                            </div>
+                            <div class="min-w-full flex justify-center items-center bg-gray-900/50 p-2">
+                                <img src="/src/assets/tip2.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-300" onclick="openTipModal('/src/assets/tip2.png')">
+                            </div>
+                            <div class="min-w-full flex justify-center items-center bg-gray-900/50 p-2">
+                                <img src="/src/assets/tip3.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-300" onclick="openTipModal('/src/assets/tip3.png')">
+                            </div>
+                            <div class="min-w-full flex justify-center items-center bg-gray-900/50 p-2">
+                                <img src="/src/assets/tip4.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-300" onclick="openTipModal('/src/assets/tip4.png')">
+                            </div>
+                            <div class="min-w-full flex justify-center items-center bg-gray-900/50 p-2">
+                                <img src="/src/assets/tip5.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-300" onclick="openTipModal('/src/assets/tip5.png')">
+                            </div>
+                            <div class="min-w-full flex justify-center items-center bg-gray-900/50 p-2">
+                                <img src="/src/assets/tip6.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-300" onclick="openTipModal('/src/assets/tip6.png')">
+                            </div>
+                        </div>
+
+                        <!-- Navigation Buttons -->
+                        <button onclick="moveCarousel(-1)" class="absolute left-4 top-[55%] -translate-y-1/2 bg-black/60 hover:bg-blue-600/90 text-white w-12 h-12 rounded-full flex items-center justify-center backdrop-blur transition-all opacity-0 group-hover:opacity-100 transform -translate-x-4 group-hover:translate-x-0 shadow-[0_0_15px_rgba(0,0,0,0.5)] border border-white/20 z-10">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
+                        </button>
+                        <button onclick="moveCarousel(1)" class="absolute right-4 top-[55%] -translate-y-1/2 bg-black/60 hover:bg-blue-600/90 text-white w-12 h-12 rounded-full flex items-center justify-center backdrop-blur transition-all opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0 shadow-[0_0_15px_rgba(0,0,0,0.5)] border border-white/20 z-10">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
+                        </button>
                     </div>
-                    <div class="rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:border-blue-500/50 transition-all hover:scale-105 cursor-pointer" onclick="openTipModal('/src/assets/tip3.png')">
-                        <img src="/src/assets/tip3.png" alt="Tip 3" class="w-full h-auto object-cover">
-                    </div>
-                    <div class="rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:border-blue-500/50 transition-all hover:scale-105 cursor-pointer" onclick="openTipModal('/src/assets/tip4.png')">
-                        <img src="/src/assets/tip4.png" alt="Tip 4" class="w-full h-auto object-cover">
-                    </div>
-                    <div class="rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:border-blue-500/50 transition-all hover:scale-105 cursor-pointer" onclick="openTipModal('/src/assets/tip5.png')">
-                        <img src="/src/assets/tip5.png" alt="Tip 5" class="w-full h-auto object-cover">
-                    </div>
-                    <div class="rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:border-blue-500/50 transition-all hover:scale-105 cursor-pointer" onclick="openTipModal('/src/assets/tip6.png')">
-                        <img src="/src/assets/tip6.png" alt="Tip 6" class="w-full h-auto object-cover">
+
+                    <!-- Dots -->
+                    <div class="flex justify-center items-center gap-3 mt-6" id="carousel-dots">
+                        <!-- Dots injected by JS -->
                     </div>
                 </div>
             </section>
@@ -925,6 +1015,45 @@ app.get('/', (req, res) => {
                         
                         <div id="groups-list-container" class="flex-grow overflow-y-auto custom-scrollbar space-y-2 pr-2">
                             <p class="text-gray-500 text-sm text-center py-4">Cargando grupos...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: YOUTUBE CHANNELS (Admin Only) -->
+        <div id="section-youtube" class="hidden">
+            <div class="bg-gray-800/40 backdrop-blur-xl rounded-3xl border border-red-500/30 overflow-hidden shadow-2xl p-6">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b border-red-500/30 pb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-red-400 flex items-center gap-2">
+                            <span>📺</span> Gestión de Canales YouTube
+                        </h2>
+                        <p class="text-gray-400 text-sm mt-1">Añade y edita canales de YouTube para el resumen automatizado.</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Left: Form Placeholder or info -->
+                    <div class="space-y-4 bg-gray-900/40 p-6 rounded-2xl border border-gray-700/50 flex flex-col justify-center items-center text-center">
+                        <div class="text-6xl mb-4">🎥</div>
+                        <h3 class="text-xl font-bold text-white mb-2">Bot de YouTube</h3>
+                        <p class="text-sm text-gray-400">
+                            Los canales añadidos aquí serán escaneados continuamente para extraer y resumir los últimos videos sobre trading y crypto. El bot actualizará los botones del comando <code class="bg-gray-800 px-1 py-0.5 rounded text-red-400">/yt</code> automáticamente.
+                        </p>
+                    </div>
+
+                    <!-- Right: Channels List -->
+                    <div class="bg-gray-900/40 p-6 rounded-2xl border border-gray-700/50 flex flex-col max-h-[500px]">
+                        <div class="flex justify-between items-center mb-4">
+                            <label class="block text-sm font-medium text-gray-300">Canales Registrados</label>
+                            <div>
+                                <button onclick="addYoutubeChannel()" class="text-xs text-red-400 hover:text-red-300 font-bold mr-3">+ Agregar Canal</button>
+                            </div>
+                        </div>
+                        
+                        <div id="youtube-list-container" class="flex-grow overflow-y-auto custom-scrollbar space-y-2 pr-2">
+                            <p class="text-gray-500 text-sm text-center py-4">Cargando canales...</p>
                         </div>
                     </div>
                 </div>

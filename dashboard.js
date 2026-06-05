@@ -319,7 +319,7 @@ function toggleAdminSwitch() {
 
 function showSection(sectionId) {
     // Hide all sections
-    ['dashboard', 'history', 'users', 'bitacora', 'broadcast'].forEach(s => {
+    ['dashboard', 'history', 'users', 'bitacora', 'broadcast', 'youtube'].forEach(s => {
         const el = document.getElementById(`section-${s}`);
         if(el) el.classList.add('hidden');
     });
@@ -472,6 +472,7 @@ if (localStorage.getItem('ditoxMode') === 'true') {
         });
 
     loadGroupsForBroadcast();
+    loadYoutubeChannels();
 }
 
 function updateSignal(signalId) {
@@ -934,3 +935,167 @@ if (broadcastFileInput) {
         }
     });
 }
+
+// --- YOUTUBE CHANNELS LOGIC ---
+function loadYoutubeChannels() {
+    fetch('/admin/youtube-channels')
+        .then(r => r.json())
+        .then(channels => {
+            const container = document.getElementById('youtube-list-container');
+            if (!container) return;
+            if (channels.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">No hay canales configurados.</p>';
+                return;
+            }
+            container.innerHTML = channels.map(c => `
+                <div class="flex items-center justify-between p-3 rounded-xl border border-gray-700/50 hover:border-red-500/40 hover:bg-red-900/10 transition-all">
+                    <div class="flex items-center gap-3">
+                        <img src="${c.logoUrl || 'https://via.placeholder.com/40'}" alt="logo" class="w-10 h-10 rounded-full border border-gray-600">
+                        <div>
+                            <span class="text-sm font-bold text-gray-300 block">${c.nombre}</span>
+                            <span class="text-xs text-gray-500">${c.channelId}</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="editYoutubeChannel('${c.id}', '${c.channelId}', '${c.nombre}')" class="text-xs text-blue-400 hover:text-blue-300 p-1">✏️</button>
+                        <button onclick="deleteYoutubeChannel('${c.id}')" class="text-xs text-red-400 hover:text-red-300 p-1">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        });
+}
+
+function addYoutubeChannel() {
+    customPrompt("ID del Canal de YouTube (Ej. UChYI1ptK3fy06LzLnwsm8pA):", (channelId) => {
+        if (!channelId) return;
+        customPrompt("Nombre del Canal:", (nombre) => {
+            if (!nombre) return;
+            fetch('/admin/youtube-channels', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: 'awd ', channelId, nombre })
+            }).then(r=>r.json()).then(d=>{
+                if(d.success) loadYoutubeChannels();
+                else alert("Error: " + d.message);
+            });
+        });
+    });
+}
+
+function editYoutubeChannel(id, oldChannelId, oldNombre) {
+    customPrompt("Nuevo ID del Canal ("+oldChannelId+"):", (channelId) => {
+        if (!channelId) channelId = oldChannelId;
+        customPrompt("Nuevo Nombre del Canal ("+oldNombre+"):", (nombre) => {
+            if (!nombre) nombre = oldNombre;
+            fetch('/admin/youtube-channels/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: 'awd ', channelId, nombre })
+            }).then(r=>r.json()).then(d=>{
+                if(d.success) loadYoutubeChannels();
+                else alert("Error: " + d.message);
+            });
+        });
+    });
+}
+
+function deleteYoutubeChannel(id) {
+    if(!confirm("¿Eliminar canal de YouTube?")) return;
+    fetch('/admin/youtube-channels/' + id, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: 'awd ' })
+    }).then(r=>r.json()).then(d=>{
+        if(d.success) loadYoutubeChannels();
+        else alert("Error: " + d.message);
+    });
+}
+
+// --- CAROUSEL LOGIC ---
+const carouselQuotes = [
+    { text: "El mercado es un dispositivo para transferir dinero del impaciente al paciente.", author: "Warren Buffett" },
+    { text: "No tienes que ser un experto para ganar dinero, pero tienes que controlar tus emociones.", author: "Mark Douglas" },
+    { text: "Tu objetivo como trader no es tener siempre la razón, sino hacer dinero cuando la tienes y perder poco cuando te equivocas.", author: "George Soros" },
+    { text: "Un plan de trading es inútil si no tienes la disciplina para seguirlo.", author: "Jesse Livermore" },
+    { text: "Los mercados pueden mantener su irracionalidad más tiempo del que tú puedes mantener tu solvencia.", author: "John Maynard Keynes" },
+    { text: "Corta tus pérdidas rápido, deja correr tus ganancias.", author: "Proverbio de Wall Street" }
+];
+
+let currentSlide = 0;
+const totalSlides = 6;
+let carouselInterval;
+
+function initCarousel() {
+    const dotsContainer = document.getElementById('carousel-dots');
+    if (!dotsContainer) return;
+
+    // Create dots
+    dotsContainer.innerHTML = Array.from({length: totalSlides}).map((_, i) => 
+        `<button onclick="goToSlide(${i})" class="carousel-dot w-3 h-3 rounded-full transition-all duration-300 ${i === 0 ? 'bg-blue-500 w-8 shadow-[0_0_10px_rgba(59,130,246,0.6)]' : 'bg-gray-600 hover:bg-gray-400'}"></button>`
+    ).join('');
+
+    updateQuote();
+    startCarouselAutoPlay();
+
+    // Pause on hover
+    const viewport = document.getElementById('carousel-viewport');
+    if (viewport) {
+        viewport.addEventListener('mouseenter', () => clearInterval(carouselInterval));
+        viewport.addEventListener('mouseleave', startCarouselAutoPlay);
+    }
+}
+
+function updateCarouselUI() {
+    const track = document.getElementById('carousel-track');
+    if (!track) return;
+    track.style.transform = `translateX(-${currentSlide * 100}%)`;
+
+    // Update dots
+    document.querySelectorAll('.carousel-dot').forEach((dot, index) => {
+        if (index === currentSlide) {
+            dot.className = 'carousel-dot w-8 h-3 rounded-full transition-all duration-300 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.6)]';
+        } else {
+            dot.className = 'carousel-dot w-3 h-3 rounded-full transition-all duration-300 bg-gray-600 hover:bg-gray-400 shadow-none';
+        }
+    });
+
+    updateQuote();
+}
+
+function updateQuote() {
+    const quoteEl = document.getElementById('carousel-quote');
+    const authorEl = document.getElementById('carousel-author');
+    if (!quoteEl || !authorEl) return;
+
+    // Fade out
+    quoteEl.style.opacity = '0';
+    authorEl.style.opacity = '0';
+
+    setTimeout(() => {
+        quoteEl.textContent = `"${carouselQuotes[currentSlide].text}"`;
+        authorEl.textContent = `- ${carouselQuotes[currentSlide].author}`;
+        // Fade in
+        quoteEl.style.opacity = '1';
+        authorEl.style.opacity = '1';
+    }, 300);
+}
+
+function moveCarousel(dir) {
+    currentSlide = (currentSlide + dir + totalSlides) % totalSlides;
+    updateCarouselUI();
+}
+
+function goToSlide(index) {
+    currentSlide = index;
+    updateCarouselUI();
+}
+
+function startCarouselAutoPlay() {
+    clearInterval(carouselInterval);
+    carouselInterval = setInterval(() => {
+        moveCarousel(1);
+    }, 5000); // 5 seconds per slide
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', initCarousel);

@@ -2,16 +2,11 @@ const axios = require('axios');
 const { GoogleGenAI } = require('@google/genai');
 const { YoutubeTranscript } = require('youtube-transcript');
 const Parser = require('rss-parser'); // 🚀 NUEVA IMPORTACIÓN
+const { YoutubeChannel } = require('../db/mongo');
 
 const rssParser = new Parser();
 
-// ─── Configuración de Canales ─────────────────────────────────────────────────
-const CANALES_YT = {
-    CryptoBruj: { channelId: 'UChYI1ptK3fy06LzLnwsm8pA', nombre: 'Cryptobruj' },
-    InformeCrypto: { channelId: 'UCccJ73p62TFlX1ImgWEdp4g', nombre: 'Informe Crypto' }
-};
-
-let ultimosVideos = { CryptoBruj: null, InformeCrypto: null };
+let ultimosVideos = {};
 
 // ─── Funciones Auxiliares ────────────────────────────────────────────────────
 
@@ -25,9 +20,8 @@ function getDurationInSeconds(duration) {
     return hours * 3600 + minutes * 60 + seconds;
 }
 
-// ─── PROMPT DEL SISTEMA ──────────────────────────────────────────────────────
 function buildPrompt(nombreCanal, titulo, transcripcion) {
-    return `Actúa como un analista financiero experto. Te proporcionaré el título y la transcripción completa del último video de YouTube de "${nombreCanal}".
+    return `Actúa como un analista financiero experto en trading de criptomonedas a corto plazo. Te proporcionaré el título y la transcripción de un video de YouTube de "${nombreCanal}".
     
 Título del video: "${titulo}"
 Transcripción:
@@ -35,34 +29,29 @@ Transcripción:
 ${transcripcion}
 """
 
-Tu objetivo es extraer SOLO la información técnica y fundamental vital para Bitcoin y el mercado cripto. Ignora por completo noticias macroeconómicas, de acciones o materias primas que no tengan un impacto directo y claro en las criptomonedas.
+Tu objetivo es extraer EXCLUSIVAMENTE la estrategia e información útil para el CORTO PLAZO (próximos 1, 2 o 3 días máximo). 
 
-Genera el resumen siguiendo ESTRICTAMENTE esta estructura exacta (incluyendo los saltos de línea):
+REGLAS DE FILTRADO (LO QUE DEBES IGNORAR):
+1. Ignora por completo análisis macroeconómicos, fundamentales tradicionales o noticias.
+2. Ignora estrategias de largo plazo (como compras Spot a meses, Hold, o acumulación DCA).
+3. Ignora los nombres de indicadores técnicos (no menciones RSI, MACD, Medias Móviles, etc.). Concéntrate solo en el precio y la acción resultante.
+4. Ignora proyecciones lejanas (ej. "objetivos a final de año", caídas a zonas irrelevantes para los próximos 3 días).
+
+Genera el resumen siguiendo ESTRICTAMENTE esta estructura exacta (mantén los saltos de línea):
 
 Visión ${nombreCanal} ([alcista/bajista/neutral]): [Breve estado actual ₿ en MAYÚSCULAS con emoji direccional 📈/📉/🟢/🔴]
 
-Idea principal: [Resumen conciso del movimiento esperado con emoji direccional 📈/📉/🟢/🔴]
+Idea principal: [Resumen de 1 o 2 líneas del movimiento inmediato esperado]. Ideas clave: [Aquí introduce SOLO los gatillos operativos de los próximos 1-3 días (ej. zonas exactas de Long, Short, Liquidaciones o rebotes inminentes), redactados de corrido, de forma ultra-concreta y usando emojis].
 
-Resistencias clave: [Listado de zonas de rechazo]
-
-Soportes/Objetivos: [Listado de zonas de liquidación o rebote]
-
-Indicadores: [Mención concisa de indicadores y su señal con emoji direccional 📈/📉/🟢/🔴]
-
-Fundamentales:
-* [Evento]: [Dato clave en 1 línea] ([alcista/bajista/neutral] crypto con emoji direccional 📈/📉/🟢/🔴)
-
-Reglas OBLIGATORIAS:
+Reglas OBLIGATORIAS de formato:
 1. Sé extremadamente puntual, directo y estilo telegrama. Cero introducciones, saludos o conclusiones.
-2. Resalta TODOS los precios exactos en negrita usando las etiquetas <strong>precio</strong>(Ejemplo: <strong>$73,000</strong> o <strong>$79,500</strong>).
-3. Resaltar las palabras  términos relacionados a tendencia con las etiquetas <strong>tendencia</strong> (Ejemplo: <strong>alcista</strong>, <strong>bajista</strong>, <strong>neutral</strong>).
-4. En la sección "Fundamentales", solo incluye eventos si afectan a cripto, e indica obligatoriamente su sesgo al final entre paréntesis.
-5. Mantén los saltos de línea entre cada sección tal cual se muestra en la estructura para facilitar la lectura rápida.`;
+2. Resalta TODOS los precios exactos en negrita usando las etiquetas <strong>precio</strong> (Ejemplo: <strong>$64,800</strong>).
+3. Resalta las palabras relacionadas a tendencia con las etiquetas <strong>tendencia</strong> (Ejemplo: <strong>alcista</strong>, <strong>bajista</strong>).
+4. No agregues subtítulos ni listas con viñetas después de "Ideas clave:". Todo debe ir fluido en el mismo párrafo para una lectura rápida.`;
 }
 
 // ─── Obtener último video VÁLIDO via RSS + YouTube API (Costo: 1 punto) ──────
-async function getLatestValidVideo(canalKey) {
-    const canal = CANALES_YT[canalKey];
+async function getLatestValidVideo(canal) {
     const apiKey = process.env.YT_API_V3;
 
     if (!apiKey) throw new Error('YT_API_V3 no está configurada en .env');
@@ -157,36 +146,41 @@ async function generarResumenIA(video, nombreCanal) {
             : `Hace ${diasAtras} día${diasAtras > 1 ? 's' : ''}`;
 
     analisisIA += `\n\n⏱️ Publicado: ${tiempoStr}\n🔗 <a href=\"${video.url}\">Ver video original</a>`;
-    
+
     return analisisIA;
 }
 
 // ─── FLUJO 1: Polling Constante (cada 15 min) ─────────────────────────────────
 async function startYoutubePolling(enviarTelegramFn) {
     async function chequearNuevosVideos() {
-        for (const clave of Object.keys(CANALES_YT)) {
-            try {
-                const video = await getLatestValidVideo(clave);
+        try {
+            const canales = await YoutubeChannel.find();
+            for (const canal of canales) {
+                try {
+                    const video = await getLatestValidVideo(canal);
 
-                if (ultimosVideos[clave] === null) {
-                    ultimosVideos[clave] = video.id;
-                    continue;
-                }
+                    if (!ultimosVideos[canal.channelId]) {
+                        ultimosVideos[canal.channelId] = video.id;
+                        continue;
+                    }
 
-                if (ultimosVideos[clave] !== video.id) {
-                    console.log(`[ALERTA] ¡Nuevo video VÁLIDO de ${CANALES_YT[clave].nombre}! → ${video.title}`);
-                    ultimosVideos[clave] = video.id;
+                    if (ultimosVideos[canal.channelId] !== video.id) {
+                        console.log(`[ALERTA] ¡Nuevo video VÁLIDO de ${canal.nombre}! → ${video.title}`);
+                        ultimosVideos[canal.channelId] = video.id;
 
-                    const resumen = await generarResumenIA(video, CANALES_YT[clave].nombre);
-                    await enviarTelegramFn(resumen, 'BTCUSDT', { skipSticker: true });
-                }
-            } catch (error) {
-                if (error.message === 'NO_VALID_VIDEO') {
-                    console.warn(`[YT] No hay videos válidos para ${CANALES_YT[clave].nombre}.`);
-                } else {
-                    console.error(`[YT] Error en polling de ${CANALES_YT[clave].nombre}:`, error.message);
+                        const resumen = await generarResumenIA(video, canal.nombre);
+                        await enviarTelegramFn(resumen, 'BTCUSDT', { skipSticker: true });
+                    }
+                } catch (error) {
+                    if (error.message === 'NO_VALID_VIDEO') {
+                        console.warn(`[YT] No hay videos válidos para ${canal.nombre}.`);
+                    } else {
+                        console.error(`[YT] Error en polling de ${canal.nombre}:`, error.message);
+                    }
                 }
             }
+        } catch (error) {
+            console.error('[YT] Error al obtener canales de la DB:', error.message);
         }
     }
 
@@ -201,25 +195,36 @@ async function startYoutubePolling(enviarTelegramFn) {
 
 // ─── FLUJO 2: Comando Manual /yt ─────────────────────────────────────────────
 function setupYoutubeCommands(bot) {
-    bot.onText(/^\/yt$/, (msg) => {
+    bot.onText(/^\/yt$/, async (msg) => {
         const chatId = msg.chat.id;
         const threadId = msg.message_thread_id;
 
-        const opciones = {
-            reply_markup: {
-                inline_keyboard: [[
-                    { text: '🔮 Cryptobruj', callback_data: 'yt_CryptoBruj' },
-                    { text: '📊 Informe Crypto', callback_data: 'yt_InformeCrypto' }
-                ]]
+        try {
+            const canales = await YoutubeChannel.find();
+            if (canales.length === 0) {
+                return bot.sendMessage(chatId, '❌ No hay canales de YouTube configurados.');
             }
-        };
-        if (threadId) opciones.message_thread_id = threadId;
 
-        bot.sendMessage(
-            chatId,
-            '🤖 <b>Resumen de Análisis (YouTube):</b>\nSelecciona un canal para extraer el último video (ignorando Shorts/Directos):',
-            { ...opciones, parse_mode: 'HTML' }
-        );
+            const buttons = canales.map(c => ({ text: `🎥 ${c.nombre}`, callback_data: `yt_${c.channelId}` }));
+            
+            const inline_keyboard = [];
+            for (let i = 0; i < buttons.length; i += 2) {
+                inline_keyboard.push(buttons.slice(i, i + 2));
+            }
+
+            const opciones = {
+                reply_markup: { inline_keyboard }
+            };
+            if (threadId) opciones.message_thread_id = threadId;
+
+            bot.sendMessage(
+                chatId,
+                '🤖 <b>Resumen de Análisis (YouTube):</b>\nSelecciona un canal para extraer el último video (ignorando Shorts/Directos):',
+                { ...opciones, parse_mode: 'HTML' }
+            );
+        } catch (error) {
+            bot.sendMessage(chatId, '❌ Error al cargar canales de YouTube.');
+        }
     });
 
     bot.on('callback_query', async (callbackQuery) => {
@@ -228,48 +233,53 @@ function setupYoutubeCommands(bot) {
 
         const msg = callbackQuery.message;
         const chatId = msg.chat.id;
-        const canalClave = action.replace('yt_', '');
-        const canal = CANALES_YT[canalClave];
-        if (!canal) return;
-
-        bot.answerCallbackQuery(callbackQuery.id, { text: `Buscando último video válido de ${canal.nombre}...` });
-
-        const mensajeCarga = await bot.sendMessage(
-            chatId,
-            `🔍 Buscando y analizando el último video válido de <b>${canal.nombre}</b>...\n_Ignorando Shorts y transmisiones en vivo._`,
-            { parse_mode: 'HTML' }
-        );
-
+        const channelId = action.replace('yt_', '');
+        
         try {
-            const video = await getLatestValidVideo(canalClave);
-            const resumen = await generarResumenIA(video, canal.nombre);
+            const canal = await YoutubeChannel.findOne({ channelId });
+            if (!canal) return bot.answerCallbackQuery(callbackQuery.id, { text: 'Canal no encontrado', show_alert: true });
 
-            await bot.editMessageText(resumen, {
-                chat_id: chatId,
-                message_id: mensajeCarga.message_id,
-                parse_mode: 'HTML',
-                disable_web_page_preview: true
-            });
+            bot.answerCallbackQuery(callbackQuery.id, { text: `Buscando último video válido de ${canal.nombre}...` });
 
-        } catch (error) {
-            console.error(`[YT] Error en callback /yt para ${canal.nombre}:`, error.message);
+            const mensajeCarga = await bot.sendMessage(
+                chatId,
+                `🔍 Buscando y analizando el último video válido de <b>${canal.nombre}</b>...\n_Ignorando Shorts y transmisiones en vivo._`,
+                { parse_mode: 'HTML' }
+            );
 
-            let errorMsg = '❌ Ocurrió un error procesando el video.';
-            if (error.message === 'NO_TRANSCRIPT') {
-                errorMsg = '❌ El último video de este canal no tiene subtítulos generados aún.';
-            } else if (error.message === 'NO_VALID_VIDEO') {
-                errorMsg = '❌ Los últimos videos del canal son solo Shorts o Directos. No hay contenido analizable.';
-            } else if (error.message.includes('503')) {
-                errorMsg = '❌ Los servidores de Gemini están saturados en este momento. Intenta en unos minutos.';
-            } else {
-                errorMsg = `❌ Error inesperado: ${error.message}`;
+            try {
+                const video = await getLatestValidVideo(canal);
+                const resumen = await generarResumenIA(video, canal.nombre);
+
+                await bot.editMessageText(resumen, {
+                    chat_id: chatId,
+                    message_id: mensajeCarga.message_id,
+                    parse_mode: 'HTML',
+                    disable_web_page_preview: true
+                });
+
+            } catch (error) {
+                console.error(`[YT] Error en callback /yt para ${canal.nombre}:`, error.message);
+
+                let errorMsg = '❌ Ocurrió un error procesando el video.';
+                if (error.message === 'NO_TRANSCRIPT') {
+                    errorMsg = '❌ El último video de este canal no tiene subtítulos generados aún.';
+                } else if (error.message === 'NO_VALID_VIDEO') {
+                    errorMsg = '❌ Los últimos videos del canal son solo Shorts o Directos. No hay contenido analizable.';
+                } else if (error.message.includes('503')) {
+                    errorMsg = '❌ Los servidores de Gemini están saturados en este momento. Intenta en unos minutos.';
+                } else {
+                    errorMsg = `❌ Error inesperado: ${error.message}`;
+                }
+
+                bot.editMessageText(errorMsg, {
+                    chat_id: chatId,
+                    message_id: mensajeCarga.message_id,
+                    parse_mode: 'HTML'
+                }).catch(() => bot.sendMessage(chatId, errorMsg, { parse_mode: 'HTML' }));
             }
-
-            bot.editMessageText(errorMsg, {
-                chat_id: chatId,
-                message_id: mensajeCarga.message_id,
-                parse_mode: 'HTML'
-            }).catch(() => bot.sendMessage(chatId, errorMsg, { parse_mode: 'HTML' }));
+        } catch (error) {
+            console.error(error);
         }
     });
 }
