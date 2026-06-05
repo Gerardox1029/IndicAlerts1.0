@@ -41,13 +41,17 @@ Genera el resumen siguiendo ESTRICTAMENTE esta estructura exacta (mantén los sa
 
 Visión ${nombreCanal} ([alcista/bajista/neutral]): [Breve estado actual ₿ en MAYÚSCULAS con emoji direccional 📈/📉/🟢/🔴]
 
-Idea principal: [Resumen de 1 o 2 líneas del movimiento inmediato esperado]. Ideas clave: [Aquí introduce SOLO los gatillos operativos de los próximos 1-3 días (ej. zonas exactas de Long, Short, Liquidaciones o rebotes inminentes), redactados de corrido, de forma ultra-concreta y usando emojis].
+🪬Idea principal: [Resumen de 1 o 2 líneas del movimiento inmediato esperado]. 
+
+💡Ideas clave: [Aquí introduce SOLO los gatillos operativos de los próximos 1-3 días (ej. zonas exactas de Long, Short, Liquidaciones o rebotes inminentes), redactados de corrido, de forma ultra-concreta y usando emojis].
 
 Reglas OBLIGATORIAS de formato:
 1. Sé extremadamente puntual, directo y estilo telegrama. Cero introducciones, saludos o conclusiones.
 2. Resalta TODOS los precios exactos en negrita usando las etiquetas <strong>precio</strong> (Ejemplo: <strong>$64,800</strong>).
 3. Resalta las palabras relacionadas a tendencia con las etiquetas <strong>tendencia</strong> (Ejemplo: <strong>alcista</strong>, <strong>bajista</strong>).
-4. No agregues subtítulos ni listas con viñetas después de "Ideas clave:". Todo debe ir fluido en el mismo párrafo para una lectura rápida.`;
+4. Resalta Visión, Idea Principal e Ideas clave con la etiqueta <strong></strong>.
+5. No agregues subtítulos ni listas con viñetas después de "Ideas clave:"  
+6. Mantén los saltos de línea entre cada sección tal cual se muestra en la estructura para facilitar la lectura rápida, cada Idea Clave tiene un salto de línea`;
 }
 
 // ─── Obtener último video VÁLIDO via RSS + YouTube API (Costo: 1 punto) ──────
@@ -206,7 +210,7 @@ function setupYoutubeCommands(bot) {
             }
 
             const buttons = canales.map(c => ({ text: `🎥 ${c.nombre}`, callback_data: `yt_${c.channelId}` }));
-            
+
             const inline_keyboard = [];
             for (let i = 0; i < buttons.length; i += 2) {
                 inline_keyboard.push(buttons.slice(i, i + 2));
@@ -234,7 +238,7 @@ function setupYoutubeCommands(bot) {
         const msg = callbackQuery.message;
         const chatId = msg.chat.id;
         const channelId = action.replace('yt_', '');
-        
+
         try {
             const canal = await YoutubeChannel.findOne({ channelId });
             if (!canal) return bot.answerCallbackQuery(callbackQuery.id, { text: 'Canal no encontrado', show_alert: true });
