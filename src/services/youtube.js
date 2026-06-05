@@ -3,6 +3,8 @@ const { GoogleGenAI } = require('@google/genai');
 const { YoutubeTranscript } = require('youtube-transcript');
 const Parser = require('rss-parser'); // 🚀 NUEVA IMPORTACIÓN
 const { YoutubeChannel } = require('../db/mongo');
+const fs = require('fs');
+const path = require('path');
 
 const rssParser = new Parser();
 
@@ -124,15 +126,63 @@ async function getTranscript(videoId) {
     }
 }
 
-// ─── Generar resumen con Gemini ───────────────────────────────────────────────
+// ─── Lógica de Caché ──────────────────────────────────────────────────────────
+const CACHE_DIR = path.join(__dirname, '../../cache_analisis');
+
+function cleanOldCache() {
+    if (!fs.existsSync(CACHE_DIR)) return;
+    
+    const files = fs.readdirSync(CACHE_DIR);
+    const now = Date.now();
+    const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
+
+    files.forEach(file => {
+        if (!file.endsWith('.json')) return;
+        const filePath = path.join(CACHE_DIR, file);
+        try {
+            const stats = fs.statSync(filePath);
+            if (now - stats.mtimeMs > TEN_DAYS_MS) {
+                fs.unlinkSync(filePath);
+                console.log(`[CACHE CLEANUP] Archivo antiguo eliminado: ${file}`);
+            }
+        } catch (e) {
+            console.error(`[CACHE ERROR] Error al limpiar cache ${file}:`, e.message);
+        }
+    });
+}
+
+// ─── Generar resumen con Gemini (Con Caché Local Integrado) ───────────────────
 async function generarResumenIA(video, nombreCanal) {
+    if (!fs.existsSync(CACHE_DIR)) {
+        fs.mkdirSync(CACHE_DIR, { recursive: true });
+    }
+
+    const videoId = video.id;
+    const cachePath = path.join(CACHE_DIR, `${videoId}.json`);
+
+    // 1. Verificación: Si existe (Cache Hit)
+    if (fs.existsSync(cachePath)) {
+        try {
+            const cachedData = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
+            console.log(`[CACHE HIT] Usando análisis guardado para el video: ${videoId}`);
+            return cachedData.analisis;
+        } catch (e) {
+            console.warn(`[CACHE WARNING] Archivo corrupto, se regenerará: ${videoId}`);
+        }
+    }
+
+    // 2. Si no existe (Cache Miss)
     if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY no configurada');
 
-    const transcripcion = await getTranscript(video.id);
+    // 2.1 Limpieza de archivos antiguos
+    cleanOldCache();
+
+    // 2.2 Llamada a Gemini
+    const transcripcion = await getTranscript(videoId);
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const prompt = buildPrompt(nombreCanal, video.title, transcripcion);
 
-    console.log(`[GEMINI] Procesando transcripción de "${video.title}"...`);
+    console.log(`[GEMINI] Procesando transcripción de "${video.title}"... (Cache Miss)`);
 
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -153,6 +203,20 @@ async function generarResumenIA(video, nombreCanal) {
             : `Hace ${diasAtras} día${diasAtras > 1 ? 's' : ''}`;
 
     analisisIA += `\n\n⏱️ Publicado: ${tiempoStr}\n🔗 <a href=\"${video.url}\">Ver video original</a>`;
+
+    // 2.3 Guardar el resultado en caché
+    try {
+        const cacheContent = {
+            video_id: videoId,
+            nombre_canal: nombreCanal,
+            fecha_creacion: new Date().toISOString(),
+            analisis: analisisIA
+        };
+        fs.writeFileSync(cachePath, JSON.stringify(cacheContent, null, 2), 'utf8');
+        console.log(`[CACHE SAVE] Análisis guardado en caché: ${videoId}.json`);
+    } catch (e) {
+        console.error(`[CACHE ERROR] No se pudo guardar el archivo: ${videoId}.json`, e.message);
+    }
 
     return analisisIA;
 }
