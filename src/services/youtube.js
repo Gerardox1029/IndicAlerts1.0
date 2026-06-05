@@ -36,14 +36,17 @@ REGLAS DE FILTRADO (LO QUE DEBES IGNORAR):
 2. Ignora estrategias de largo plazo (como compras Spot a meses, Hold, o acumulación DCA).
 3. Ignora los nombres de indicadores técnicos (no menciones RSI, MACD, Medias Móviles, etc.). Concéntrate solo en el precio y la acción resultante.
 4. Ignora proyecciones lejanas (ej. "objetivos a final de año", caídas a zonas irrelevantes para los próximos 3 días).
+5. Ignora análisis de altcoins, solo BTC.
 
 Genera el resumen siguiendo ESTRICTAMENTE esta estructura exacta (mantén los saltos de línea):
 
 Visión ${nombreCanal} ([alcista/bajista/neutral]): [Breve estado actual ₿ en MAYÚSCULAS con emoji direccional 📈/📉/🟢/🔴]
 
-🪬Idea principal: [Resumen de 1 o 2 líneas del movimiento inmediato esperado]. 
+🪬Idea principal: [Resumen de 1 o 2 líneas del movimiento inmediato esperado con emoji direccional 📈/📉/🟢/🔴]]. 
 
-💡Ideas clave: [Aquí introduce SOLO los gatillos operativos de los próximos 1-3 días (ej. zonas exactas de Long, Short, Liquidaciones o rebotes inminentes), redactados de corrido, de forma ultra-concreta y usando emojis].
+🎯Ideas clave: 
+
+[Aquí introduce SOLO los gatillos operativos de los próximos 1-3 días (ej. zonas exactas de Long, Short, Liquidaciones o rebotes inminentes), redacta máximo 3 ideas, cada una en una línea diferente y todas comenzando con el emogi 💡, de forma ultra-concreta, usando emojis y sin repetir información entre ideas].
 
 Reglas OBLIGATORIAS de formato:
 1. Sé extremadamente puntual, directo y estilo telegrama. Cero introducciones, saludos o conclusiones.
