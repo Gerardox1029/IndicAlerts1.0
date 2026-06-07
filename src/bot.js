@@ -541,7 +541,7 @@ By Ditox🔮
 
         if (fs.existsSync(buenTickPath)) {
             await bot.sendPhoto(chatId, fs.createReadStream(buenTickPath), {
-                caption: 'buen_tick.png',
+                caption: '✅',
                 ...sendOptions
             }).catch(e => console.error("Error enviando buen_tick:", e.message));
         } else {
@@ -550,7 +550,7 @@ By Ditox🔮
 
         if (fs.existsSync(malTickPath)) {
             await bot.sendPhoto(chatId, fs.createReadStream(malTickPath), {
-                caption: 'mal_tick.png',
+                caption: '❌',
                 ...sendOptions
             }).catch(e => console.error("Error enviando mal_tick:", e.message));
         } else {
