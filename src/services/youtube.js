@@ -312,10 +312,11 @@ function setupYoutubeCommands(bot) {
 
             bot.answerCallbackQuery(callbackQuery.id, { text: `Buscando último video válido de ${canal.nombre}...` });
 
+            const threadId = msg.message_thread_id;
             const mensajeCarga = await bot.sendMessage(
                 chatId,
                 `🔍 Buscando y analizando el último video válido de <b>${canal.nombre}</b>...\n_Ignorando Shorts y transmisiones en vivo._`,
-                { parse_mode: 'HTML' }
+                threadId ? { parse_mode: 'HTML', message_thread_id: threadId } : { parse_mode: 'HTML' }
             );
 
             try {
@@ -326,7 +327,8 @@ function setupYoutubeCommands(bot) {
                     chat_id: chatId,
                     message_id: mensajeCarga.message_id,
                     parse_mode: 'HTML',
-                    disable_web_page_preview: true
+                    disable_web_page_preview: true,
+                    ...(msg.message_thread_id ? { message_thread_id: msg.message_thread_id } : {})
                 });
 
             } catch (error) {
