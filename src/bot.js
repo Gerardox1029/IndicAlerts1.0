@@ -529,6 +529,35 @@ By Ditox🔮
         }
     });
 
+    // /tick
+    bot.onText(/^\/tick$/i, async (msg) => {
+        const chatId = msg.chat.id;
+        const threadId = msg.message_thread_id;
+        const sendOptions = threadId ? { message_thread_id: threadId } : {};
+
+        const assetsPath = path.join(__dirname, 'assets');
+        const buenTickPath = path.join(assetsPath, 'buen_tick.png');
+        const malTickPath = path.join(assetsPath, 'mal_tick.png');
+
+        if (fs.existsSync(buenTickPath)) {
+            await bot.sendPhoto(chatId, fs.createReadStream(buenTickPath), {
+                caption: 'buen_tick.png',
+                ...sendOptions
+            }).catch(e => console.error("Error enviando buen_tick:", e.message));
+        } else {
+            console.error("buen_tick.png no encontrado en:", buenTickPath);
+        }
+
+        if (fs.existsSync(malTickPath)) {
+            await bot.sendPhoto(chatId, fs.createReadStream(malTickPath), {
+                caption: 'mal_tick.png',
+                ...sendOptions
+            }).catch(e => console.error("Error enviando mal_tick:", e.message));
+        } else {
+            console.error("mal_tick.png no encontrado en:", malTickPath);
+        }
+    });
+
     // /simulate_triple
     bot.onText(/\/simulate_triple_(long|short)/i, async (msg, match) => {
         const type = match[1].toUpperCase();
