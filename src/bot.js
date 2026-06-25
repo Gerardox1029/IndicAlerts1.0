@@ -593,26 +593,23 @@ By Ditox🔮
         const comandos = `
 <b>🤖 GUÍA DE COMANDOS DITOX</b>
 
-🔎 <b><u>REPORTES</u></b>
-🔸 <code>/reportALL</code> - Reporte general de mercado
-🔸 <code>/report [Moneda]</code> - Análisis individual
-<i>Ejemplo:</i> <code>/report BTC</code> 👉 "Quiero saber cómo va BTC"
+🔎 <b><u>ANÁLISIS Y ENTRADAS</u></b>
+🔸 <code>/reportALL</code> - Reporte general del mercado
+🔸 <code>/[Moneda]</code> - Reporte individual y posible TICK (ej: <code>/btc</code>, <code>/eth</code>, <code>/sol</code>)
 
-🎯 <b><u>ENTRADAS AL TICK</u></b>
-🔸 <code>/tick[L/S][Moneda]</code> - Calcula entrada exacta
-<i>Ejemplo:</i> <code>/tickL BTC</code> 👉 "Dame el TICK de un LONG en BTC"
-<i>Ejemplo:</i> <code>/tickS ETH</code> 👉 "Dame el TICK de un SHORT en ETH"
+🧠 <b><u>TRADERS</u></b>
+🔸 <code>/traders</code> - Nivel de Aura y situación actual de Traders
 
-🧠 <b><u>PSICOTRADING</u></b>
-🔸 <code>/tip1</code> a <code>/tip5</code> - Tips de Psicotrading para evitar el TILT
-
-🖥️ <b><u>SISTEMA</u></b>
-🔸 <code>/panel</code> - Enlace al Dashboard en vivo
-<i>Ejemplo:</i> <code>/panel</code> 👉 "Dame el enlace al Panel"
+🧘 <b><u>PSICOTRADING</u></b>
+🔸 <code>/tips</code> - Filosofía de control emocional y evitar el TILT
+🔸 <code>/tip1</code> al <code>/tip5</code> - Consejos prácticos ilustrados
 
 🤡 <b><u>ENTRETENIMIENTO</u></b>
-🔸 <code>/alsison</code> - Audio secreto 1
-🔸 <code>/reportAlfaroMuerdeAlmohadas</code> - Audio secreto 2
+🔸 <code>/sexo</code> - Audio secreto y divertido aleatorio
+🔸 <code>/alsison</code> - Audio secreto clásico
+
+🖥️ <b><u>SISTEMA</u></b>
+🔸 <code>/panel</code> - Enlace al Dashboard interactivo en vivo
 
 <i>¡Mantente siempre alerta con IndicAlerts!</i> 🚀💎
 `;
