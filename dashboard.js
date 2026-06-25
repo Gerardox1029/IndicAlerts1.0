@@ -1,3 +1,5 @@
+const ADMIN_PWD = window.ADMIN_PASSWORD || 'awd ';
+
 // --- SOUND EFFECTS (POP ONLY) ---
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -298,7 +300,7 @@ function toggleAdminSwitch() {
         fetch('/admin/system-switch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: 'awd ', active: true })
+            body: JSON.stringify({ password: ADMIN_PWD, active: true })
         }).catch(console.error);
 
     } else {
@@ -312,7 +314,7 @@ function toggleAdminSwitch() {
         fetch('/admin/system-switch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: 'awd ', active: false })
+            body: JSON.stringify({ password: ADMIN_PWD, active: false })
         }).catch(console.error);
     }
 }
@@ -336,7 +338,7 @@ function sendGeneralBroadcast() {
         if (!msg) return;
 
         // No password prompt, use soft auth
-        const password = 'awd ';
+        const password = ADMIN_PWD;
         fetch('/admin/broadcast-message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -352,8 +354,8 @@ function sendGeneralBroadcast() {
 
 function toggleDitoxMode() {
     customPrompt("🔑 Contraseña Ditox", async (password) => {
-        // Relaxed check: allow 'awd' without space or with extra spaces
-        if (password && password.trim() === 'awd') {
+        // Relaxed check: allow password without space or with extra spaces
+        if (password && password.trim() === ADMIN_PWD.trim()) {
             console.log("Password correct, enabling Ditox Mode");
             localStorage.setItem('ditoxMode', 'true');
             // User requested NO confirmation message, just enter.
@@ -481,7 +483,7 @@ function updateSignal(signalId) {
     const obs = select.value;
     if (!obs) return customAlert("⚠ Selecciona una observación primero");
 
-    const password = 'awd '; // Soft Auth
+    const password = ADMIN_PWD; // Soft Auth
 
     fetch('/admin/update-signal', {
         method: 'POST',
@@ -504,7 +506,7 @@ function toggleUserPref(userId, symbol, isChecked) {
     const newPrefs = Array.from(checkboxes).map(c => c.value);
 
     // Soft auth as requested to improve UX
-    const password = 'awd ';
+    const password = ADMIN_PWD;
 
     fetch('/admin/update-user-prefs', {
         method: 'POST',
@@ -525,7 +527,7 @@ function sendPrivateMessage(userId, username) {
     customPrompt(`Mensaje para ${username}`, (msg) => {
         if (!msg) return;
         // No password prompt, use soft auth
-        const password = 'awd ';
+        const password = ADMIN_PWD;
         fetch('/admin/send-direct-message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -542,7 +544,7 @@ function sendPrivateMessage(userId, username) {
 function deleteUser(userId) {
     if (!confirm("¿Seguro que deseas eliminar este usuario?")) return;
     // No password prompt, use soft auth
-    const password = 'awd ';
+    const password = ADMIN_PWD;
     fetch('/admin/delete-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -560,7 +562,7 @@ function deleteUser(userId) {
 
 function simulateUserAlert(userId) {
     // No password prompt, use soft auth
-    const password = 'awd ';
+    const password = ADMIN_PWD;
     fetch('/admin/simulate-user-alert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -790,7 +792,7 @@ function addGroup() {
             fetch('/admin/groups', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: 'awd ', groupId, name })
+                body: JSON.stringify({ password: ADMIN_PWD, groupId, name })
             }).then(r=>r.json()).then(d=>{
                 if(d.success) loadGroupsForBroadcast();
                 else alert("Error: " + d.message);
@@ -807,7 +809,7 @@ function editGroup(id, oldGroupId, oldName) {
             fetch('/admin/groups/' + id, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: 'awd ', groupId, name })
+                body: JSON.stringify({ password: ADMIN_PWD, groupId, name })
             }).then(r=>r.json()).then(d=>{
                 if(d.success) loadGroupsForBroadcast();
                 else alert("Error: " + d.message);
@@ -821,7 +823,7 @@ function deleteGroup(id) {
     fetch('/admin/groups/' + id, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: 'awd ' })
+        body: JSON.stringify({ password: ADMIN_PWD })
     }).then(r=>r.json()).then(d=>{
         if(d.success) loadGroupsForBroadcast();
         else alert("Error: " + d.message);
@@ -858,7 +860,7 @@ function sendGroupBroadcast() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            password: 'awd ',
+            password: ADMIN_PWD,
             message: message,
             imageBase64: imageBase64,
             selectedGroups: selectedGroups
@@ -974,7 +976,7 @@ function addYoutubeChannel() {
             fetch('/admin/youtube-channels', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: 'awd ', channelId, nombre })
+                body: JSON.stringify({ password: ADMIN_PWD, channelId, nombre })
             }).then(r=>r.json()).then(d=>{
                 if(d.success) loadYoutubeChannels();
                 else alert("Error: " + d.message);
@@ -991,7 +993,7 @@ function editYoutubeChannel(id, oldChannelId, oldNombre) {
             fetch('/admin/youtube-channels/' + id, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: 'awd ', channelId, nombre })
+                body: JSON.stringify({ password: ADMIN_PWD, channelId, nombre })
             }).then(r=>r.json()).then(d=>{
                 if(d.success) loadYoutubeChannels();
                 else alert("Error: " + d.message);
@@ -1005,7 +1007,7 @@ function deleteYoutubeChannel(id) {
     fetch('/admin/youtube-channels/' + id, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: 'awd ' })
+        body: JSON.stringify({ password: ADMIN_PWD })
     }).then(r=>r.json()).then(d=>{
         if(d.success) loadYoutubeChannels();
         else alert("Error: " + d.message);
@@ -1105,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', initCarousel);
 // --- TRADERS MODULE ---
 // =====================================================================
 
-const TRADER_PASSWORD = 'awd ';
+const TRADER_PASSWORD = ADMIN_PWD;
 
 /** Aura level badges con colores y etiquetas */
 const AURA_STYLES = {

@@ -1317,6 +1317,7 @@ app.get('/', (req, res) => {
     <script>
         // Inject Configuration
         window.FLAT_SYMBOLS = ${JSON.stringify(require('./config').SYMBOLS)};
+        window.ADMIN_PASSWORD = ${JSON.stringify(ADMIN_PASSWORD)};
     </script>
     <script src="/dashboard.js"></script>
 </body>
