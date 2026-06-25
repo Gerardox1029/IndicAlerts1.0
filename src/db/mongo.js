@@ -67,6 +67,34 @@ const YoutubeChannelSchema = new mongoose.Schema({
 });
 const YoutubeChannel = mongoose.model('YoutubeChannel', YoutubeChannelSchema);
 
+// ── Trader Schema ─────────────────────────────────────────────────────────────
+// hits/misses arrancan en 7/3 para que el win-rate base sea del 70%.
+// Así si el primer resultado real es un fallo: 7/(7+3+1)=63% (pierde rango A).
+// Si acierta: 8/(7+3+1)=72% (mantiene rango A).
+const TraderSchema = new mongoose.Schema({
+    name:          { type: String, required: true },
+    isYoutuber:    { type: Boolean, default: false },
+    state:         { type: String, enum: ['durmiendo', 'alcista', 'bajista'], default: 'durmiendo' },
+    hits:          { type: Number, default: 7 },
+    misses:        { type: Number, default: 3 },
+    recentHistory: { type: [String], default: [] } // emojis ✅ / ❌, máx 5
+}, { timestamps: true });
+
+/** Calcula el win-rate y devuelve el nivel de Aura */
+TraderSchema.methods.getAuraLevel = function () {
+    const total = this.hits + this.misses;
+    if (total === 0) return { winRate: 0, level: 'B' };
+    const wr = (this.hits / total) * 100;
+    let level;
+    if (wr >= 80)      level = 'AAA';
+    else if (wr >= 75) level = 'AA';
+    else if (wr >= 70) level = 'A';
+    else               level = 'B';
+    return { winRate: parseFloat(wr.toFixed(1)), level };
+};
+
+const Trader = mongoose.model('Trader', TraderSchema);
+
 // Conexión a Base de Datos
 function connectDB() {
     if (MONGODB_URI) {
@@ -148,5 +176,6 @@ module.exports = {
     Audio,
     BitacoraTrade,
     TargetGroup,
-    YoutubeChannel
+    YoutubeChannel,
+    Trader
 };

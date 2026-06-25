@@ -10,7 +10,7 @@ const {
     ADMIN_PASSWORD
 } = require('./config');
 const state = require('./services/state');
-const { saveUserToMongo, User, TargetGroup, YoutubeChannel } = require('./db/mongo');
+const { saveUserToMongo, User, TargetGroup, YoutubeChannel, Trader } = require('./db/mongo');
 const { getBot, enviarTelegram, simulateSignalEffect } = require('./bot');
 const { checkConsolidatedAlerts } = require('./engine/loop');
 
@@ -139,6 +139,123 @@ app.put('/admin/youtube-channels/:id', async (req, res) => {
             }
         }
         await YoutubeChannel.findByIdAndUpdate(req.params.id, { channelId, nombre, logoUrl });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// ─── Trader Routes ────────────────────────────────────────────────────────────
+
+/** Helper: calcula win-rate y nivel de Aura */
+function getAuraLevel(hits, misses) {
+    const total = hits + misses;
+    if (total === 0) return { winRate: 0, level: 'B' };
+    const wr = (hits / total) * 100;
+    let level;
+    if (wr >= 80)      level = 'AAA';
+    else if (wr >= 75) level = 'AA';
+    else if (wr >= 70) level = 'A';
+    else               level = 'B';
+    return { winRate: parseFloat(wr.toFixed(1)), level };
+}
+
+app.get('/admin/traders', async (req, res) => {
+    try {
+        const traders = await Trader.find({}).sort({ createdAt: 1 });
+        res.json(traders.map(t => {
+            const { winRate, level } = getAuraLevel(t.hits, t.misses);
+            return {
+                id: t._id,
+                name: t.name,
+                isYoutuber: t.isYoutuber,
+                state: t.state,
+                hits: t.hits,
+                misses: t.misses,
+                recentHistory: t.recentHistory,
+                winRate,
+                auraLevel: level
+            };
+        }));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/admin/traders', async (req, res) => {
+    const { password, name } = req.body;
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
+    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'El nombre es requerido' });
+    try {
+        // hits:7, misses:3 por defecto → arranque con 70% de efectividad
+        const trader = await Trader.create({ name: name.trim() });
+        const { winRate, level } = getAuraLevel(trader.hits, trader.misses);
+        res.json({ success: true, trader: { id: trader._id, name: trader.name, state: trader.state, hits: trader.hits, misses: trader.misses, recentHistory: trader.recentHistory, winRate, auraLevel: level } });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.patch('/admin/traders/:id/state', async (req, res) => {
+    const { password, state } = req.body;
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
+    const validStates = ['durmiendo', 'alcista', 'bajista'];
+    if (!validStates.includes(state)) return res.status(400).json({ success: false, message: 'Estado inválido' });
+    try {
+        const trader = await Trader.findByIdAndUpdate(
+            req.params.id,
+            { state },
+            { new: true }
+        );
+        if (!trader) return res.status(404).json({ success: false, message: 'Trader no encontrado' });
+        res.json({ success: true, state: trader.state });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.patch('/admin/traders/:id/resolve', async (req, res) => {
+    const { password, result } = req.body; // result: 'hit' | 'miss'
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
+    if (result !== 'hit' && result !== 'miss') return res.status(400).json({ success: false, message: 'Resultado inválido' });
+    try {
+        const trader = await Trader.findById(req.params.id);
+        if (!trader) return res.status(404).json({ success: false, message: 'Trader no encontrado' });
+
+        const emoji = result === 'hit' ? '✅' : '❌';
+
+        // Actualizar contadores y historial
+        if (result === 'hit') trader.hits += 1;
+        else trader.misses += 1;
+
+        // Insertar al inicio y recortar a máx 5
+        trader.recentHistory.unshift(emoji);
+        if (trader.recentHistory.length > 5) trader.recentHistory = trader.recentHistory.slice(0, 5);
+
+        // Volver a estado dormido
+        trader.state = 'durmiendo';
+        await trader.save();
+
+        const { winRate, level } = getAuraLevel(trader.hits, trader.misses);
+        res.json({
+            success: true,
+            hits: trader.hits,
+            misses: trader.misses,
+            recentHistory: trader.recentHistory,
+            state: trader.state,
+            winRate,
+            auraLevel: level
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.delete('/admin/traders/:id', async (req, res) => {
+    const { password } = req.body;
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
+    try {
+        await Trader.findByIdAndDelete(req.params.id);
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
@@ -738,6 +855,9 @@ app.get('/', (req, res) => {
             <button onclick="showSection('youtube')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
                 📺 Canales YouTube
             </button>
+            <button onclick="showSection('traders')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
+                🧠 Traders
+            </button>
         </nav>
 
 
@@ -1056,6 +1176,28 @@ app.get('/', (req, res) => {
                             <p class="text-gray-500 text-sm text-center py-4">Cargando canales...</p>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: TRADERS (Admin Only) -->
+        <div id="section-traders" class="hidden">
+            <div class="bg-gray-800/40 backdrop-blur-xl rounded-3xl border border-amber-500/30 overflow-hidden shadow-2xl p-6">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b border-amber-500/30 pb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-amber-400 flex items-center gap-2">
+                            <span>🧠</span> Gestión de Traders
+                        </h2>
+                        <p class="text-gray-400 text-sm mt-1">Registra traders, sigue su estado y su nivel de Aura en tiempo real.</p>
+                    </div>
+                    <button id="btn-add-trader" onclick="addTrader()" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-gray-900 font-bold text-sm px-6 py-3 rounded-xl shadow-lg hover:shadow-amber-500/30 transition-all flex items-center gap-2 hover:scale-105">
+                        <span>+</span> Agregar Trader
+                    </button>
+                </div>
+
+                <!-- Grid de tarjetas -->
+                <div id="traders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <p class="text-gray-500 text-sm text-center py-8 col-span-full">Cargando traders...</p>
                 </div>
             </div>
         </div>

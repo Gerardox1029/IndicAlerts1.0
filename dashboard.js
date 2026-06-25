@@ -319,7 +319,7 @@ function toggleAdminSwitch() {
 
 function showSection(sectionId) {
     // Hide all sections
-    ['dashboard', 'history', 'users', 'bitacora', 'broadcast', 'youtube'].forEach(s => {
+    ['dashboard', 'history', 'users', 'bitacora', 'broadcast', 'youtube', 'traders'].forEach(s => {
         const el = document.getElementById(`section-${s}`);
         if(el) el.classList.add('hidden');
     });
@@ -473,6 +473,7 @@ if (localStorage.getItem('ditoxMode') === 'true') {
 
     loadGroupsForBroadcast();
     loadYoutubeChannels();
+    loadTraders(); // ← Cargar traders al entrar en modo admin
 }
 
 function updateSignal(signalId) {
@@ -1099,3 +1100,183 @@ function startCarouselAutoPlay() {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', initCarousel);
+
+// =====================================================================
+// --- TRADERS MODULE ---
+// =====================================================================
+
+const TRADER_PASSWORD = 'awd ';
+
+/** Aura level badges con colores y etiquetas */
+const AURA_STYLES = {
+    'AAA': { bg: 'bg-emerald-900/40', border: 'border-emerald-500/60', text: 'text-emerald-400', glow: 'shadow-[0_0_15px_rgba(52,211,153,0.25)]', badge: 'bg-emerald-500' },
+    'AA':  { bg: 'bg-blue-900/40',    border: 'border-blue-500/60',    text: 'text-blue-400',    glow: 'shadow-[0_0_12px_rgba(96,165,250,0.2)]',  badge: 'bg-blue-500' },
+    'A':   { bg: 'bg-amber-900/40',   border: 'border-amber-500/60',   text: 'text-amber-400',   glow: 'shadow-[0_0_10px_rgba(251,191,36,0.2)]',  badge: 'bg-amber-500' },
+    'B':   { bg: 'bg-gray-800/40',    border: 'border-gray-600/40',    text: 'text-gray-400',    glow: '',                                         badge: 'bg-gray-500' }
+};
+
+function stateDisplay(state) {
+    if (state === 'alcista')  return { emoji: '🟢', label: 'Alcista',  cls: 'bg-emerald-900/50 text-emerald-400 border-emerald-500/30' };
+    if (state === 'bajista')  return { emoji: '🔴', label: 'Bajista',  cls: 'bg-red-900/50 text-red-400 border-red-500/30' };
+    return { emoji: '⚪', label: 'Durmiendo', cls: 'bg-gray-800/50 text-gray-400 border-gray-600/30' };
+}
+
+function renderTraderCard(t) {
+    const aura  = AURA_STYLES[t.auraLevel] || AURA_STYLES['B'];
+    const st    = stateDisplay(t.state);
+    const hist  = (t.recentHistory && t.recentHistory.length > 0) ? t.recentHistory.join('') : '—';
+    const total = t.hits + t.misses;
+
+    return `
+    <div id="trader-card-${t.id}" class="group relative rounded-2xl p-5 border ${aura.border} ${aura.bg} ${aura.glow} transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl flex flex-col gap-3">
+        <!-- Header -->
+        <div class="flex items-start justify-between">
+            <div>
+                <span class="inline-block ${aura.badge} text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest mb-1">
+                    Aura ${t.auraLevel}
+                </span>
+                <h3 class="text-lg font-bold text-white leading-tight">${t.name}</h3>
+            </div>
+            <button onclick="deleteTrader('${t.id}')" title="Eliminar" class="text-gray-600 hover:text-red-400 transition-colors text-sm opacity-0 group-hover:opacity-100">🗑️</button>
+        </div>
+
+        <!-- Win Rate / Stats -->
+        <div class="flex items-center gap-3">
+            <div class="text-3xl font-black ${aura.text}">${t.winRate}%</div>
+            <div class="text-xs text-gray-500 leading-tight">
+                <div>✅ <span class="text-gray-300">${t.hits}</span> aciertos</div>
+                <div>❌ <span class="text-gray-300">${t.misses}</span> fallos</div>
+                <div class="text-gray-600">${total} totales</div>
+            </div>
+        </div>
+
+        <!-- Win Rate Bar -->
+        <div class="w-full bg-gray-700/50 rounded-full h-1.5 overflow-hidden">
+            <div class="${aura.badge} h-1.5 rounded-full transition-all duration-700" style="width:${Math.min(t.winRate, 100)}%"></div>
+        </div>
+
+        <!-- Estado -->
+        <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${st.cls}">
+                ${st.emoji} ${st.label}
+            </span>
+        </div>
+
+        <!-- Historial Reciente -->
+        <div class="text-xs text-gray-500">
+            <span class="font-bold text-gray-400">🔥 Historial:</span>
+            <span class="ml-1 tracking-wider text-base">${hist}</span>
+        </div>
+
+        <!-- Controles de Estado -->
+        <div class="flex gap-2 mt-1">
+            <button onclick="setTraderState('${t.id}', 'alcista')" 
+                class="flex-1 bg-emerald-900/40 hover:bg-emerald-600/60 border border-emerald-700/40 hover:border-emerald-500 text-emerald-400 hover:text-white text-xs font-bold py-2 rounded-xl transition-all active:scale-95">
+                🟢 Alcista
+            </button>
+            <button onclick="setTraderState('${t.id}', 'bajista')" 
+                class="flex-1 bg-red-900/40 hover:bg-red-600/60 border border-red-700/40 hover:border-red-500 text-red-400 hover:text-white text-xs font-bold py-2 rounded-xl transition-all active:scale-95">
+                🔴 Bajista
+            </button>
+        </div>
+
+        <!-- Botones Resolver -->
+        <div class="flex gap-2">
+            <button onclick="resolveTrader('${t.id}', 'hit')" title="Acierto"
+                class="flex-1 bg-gray-800 hover:bg-emerald-900/50 border border-gray-700 hover:border-emerald-500/50 text-lg py-2 rounded-xl transition-all active:scale-95 font-black text-emerald-400">
+                +
+            </button>
+            <button onclick="resolveTrader('${t.id}', 'miss')" title="Desacierto"
+                class="flex-1 bg-gray-800 hover:bg-red-900/50 border border-gray-700 hover:border-red-500/50 text-lg py-2 rounded-xl transition-all active:scale-95 font-black text-red-400">
+                −
+            </button>
+        </div>
+    </div>`;
+}
+
+async function loadTraders() {
+    try {
+        const res  = await fetch('/admin/traders');
+        const data = await res.json();
+        const grid = document.getElementById('traders-grid');
+        if (!grid) return;
+
+        if (!Array.isArray(data) || data.length === 0) {
+            grid.innerHTML = '<p class="text-gray-500 text-sm text-center py-8 col-span-full">No hay traders registrados. Haz clic en "Agregar Trader" para comenzar.</p>';
+            return;
+        }
+        grid.innerHTML = data.map(renderTraderCard).join('');
+    } catch (e) {
+        console.error('Error cargando traders:', e);
+    }
+}
+
+function addTrader() {
+    customPrompt('🧠 Nombre del Trader (ej: R.Linda, CryptoBruja):', (name) => {
+        if (!name || !name.trim()) return;
+        fetch('/admin/traders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: TRADER_PASSWORD, name: name.trim() })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                loadTraders();
+            } else {
+                alert('❌ Error: ' + d.message);
+            }
+        })
+        .catch(e => alert('❌ Error de red: ' + e.message));
+    });
+}
+
+function setTraderState(id, state) {
+    fetch(`/admin/traders/${id}/state`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: TRADER_PASSWORD, state })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            loadTraders();
+        } else {
+            alert('❌ Error: ' + d.message);
+        }
+    })
+    .catch(e => console.error('Error cambiando estado:', e));
+}
+
+function resolveTrader(id, result) {
+    // result: 'hit' | 'miss'
+    fetch(`/admin/traders/${id}/resolve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: TRADER_PASSWORD, result })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            loadTraders();
+        } else {
+            alert('❌ Error: ' + d.message);
+        }
+    })
+    .catch(e => console.error('Error resolviendo trader:', e));
+}
+
+function deleteTrader(id) {
+    if (!confirm('¿Eliminar este trader? Esta acción no se puede deshacer.')) return;
+    fetch(`/admin/traders/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: TRADER_PASSWORD })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) loadTraders();
+        else alert('❌ Error: ' + d.message);
+    })
+    .catch(e => console.error('Error eliminando trader:', e));
+}

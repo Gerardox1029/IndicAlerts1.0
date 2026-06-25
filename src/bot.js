@@ -17,6 +17,7 @@ const { fetchData } = require('./api/binance');
 const { calcularIndicadores, calcularTICK } = require('./engine/indicators');
 const { getPeruTime, formatPrice } = require('./utils/helpers');
 const { setupYoutubeCommands } = require('./services/youtube');
+const { setupTraderCommands } = require('./services/traders');
 // dateStr removed - now using getPeruTime()
 
 // Helper state local pointers
@@ -397,7 +398,7 @@ function setupListeners() {
         const rawSymbol = match[1].trim().toUpperCase();
 
         // Ignorar comandos conocidos
-        const ignoredCommands = ['START', 'PANEL', 'ALSISON', 'REPORTALFAROMUERDEALMOHADAS', 'REPORTALL', 'TIPS', 'AYUDA', 'YT'];
+        const ignoredCommands = ['START', 'PANEL', 'ALSISON', 'REPORTALFAROMUERDEALMOHADAS', 'REPORTALL', 'TIPS', 'AYUDA', 'YT', 'TRADERS'];
         if (ignoredCommands.includes(rawSymbol)) return;
         if (rawSymbol.startsWith('TICK') || rawSymbol.startsWith('TIP') || rawSymbol.startsWith('SIMULATE')) return;
 
@@ -713,6 +714,9 @@ By Ditox🔮
 
     // Añadir comandos de YouTube
     setupYoutubeCommands(bot);
+
+    // Añadir comandos de Traders
+    setupTraderCommands(bot);
 
     console.log('Bot escuchando comandos y capturando usuarios...');
 }
