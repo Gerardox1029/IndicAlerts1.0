@@ -173,6 +173,7 @@ app.get('/admin/traders', async (req, res) => {
                 hits: t.hits,
                 misses: t.misses,
                 recentHistory: t.recentHistory,
+                mainIdea: t.mainIdea,
                 winRate,
                 auraLevel: level
             };
@@ -209,6 +210,22 @@ app.patch('/admin/traders/:id/state', async (req, res) => {
         );
         if (!trader) return res.status(404).json({ success: false, message: 'Trader no encontrado' });
         res.json({ success: true, state: trader.state });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.patch('/admin/traders/:id/idea', async (req, res) => {
+    const { password, mainIdea } = req.body;
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ success: false, message: 'Contraseña incorrecta' });
+    try {
+        const trader = await Trader.findByIdAndUpdate(
+            req.params.id,
+            { mainIdea },
+            { new: true }
+        );
+        if (!trader) return res.status(404).json({ success: false, message: 'Trader no encontrado' });
+        res.json({ success: true, mainIdea: trader.mainIdea });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
     }

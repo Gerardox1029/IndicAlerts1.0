@@ -92,12 +92,16 @@ function setupTraderCommands(bot) {
             // Nivel con color visual por texto
             const auraDisplay = `${level} (${winRate}% de acierto)`;
 
-            const respuesta =
+            let respuesta =
 `🧠 <b>Trader: ${trader.name}</b>
 
 ✨ <b>Aura:</b> ${auraDisplay}
 📌 <b>Estado:</b> ${stateLabel} ${emoji}
 🔥 <b>Historial reciente:</b> ${historial}`;
+
+            if (trader.mainIdea) {
+                respuesta += `\n💡 <b>Idea principal:</b> ${trader.mainIdea}`;
+            }
 
             // Responder editando el mensaje o enviando uno nuevo
             await bot.editMessageText(respuesta, {

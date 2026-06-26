@@ -77,7 +77,8 @@ const TraderSchema = new mongoose.Schema({
     state:         { type: String, enum: ['durmiendo', 'alcista', 'bajista'], default: 'durmiendo' },
     hits:          { type: Number, default: 7 },
     misses:        { type: Number, default: 3 },
-    recentHistory: { type: [String], default: [] } // emojis ✅ / ❌, máx 5
+    recentHistory: { type: [String], default: [] }, // emojis ✅ / ❌, máx 5
+    mainIdea:      { type: String, default: '' }
 }, { timestamps: true });
 
 /** Calcula el win-rate y devuelve el nivel de Aura */

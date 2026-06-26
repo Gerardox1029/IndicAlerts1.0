@@ -227,12 +227,12 @@ setInterval(fetchDashboardData, 3000);
 // Missing Helper for Prompts
 let activePromptCallback = null;
 
-function customPrompt(title, callback) {
+function customPrompt(title, callback, defaultValue = '') {
     const modal = document.getElementById('modal-prompt');
     if (!modal) return alert("Error: Modal prompt not found via ID");
 
     document.getElementById('prompt-title').textContent = title;
-    document.getElementById('prompt-input').value = '';
+    document.getElementById('prompt-input').value = defaultValue;
     activePromptCallback = callback;
     modal.showModal();
     // Focus after a short delay to ensure visibility
@@ -274,9 +274,9 @@ function customAlert(title) {
 }
 // Patch customPrompt to ensure input is visible
 const originalCustomPrompt = customPrompt;
-customPrompt = function (title, callback) {
+customPrompt = function (title, callback, defaultValue = '') {
     document.getElementById('prompt-input').classList.remove('hidden');
-    originalCustomPrompt(title, callback);
+    originalCustomPrompt(title, callback, defaultValue);
 }
 
 
@@ -1170,6 +1170,19 @@ function renderTraderCard(t) {
             <span class="ml-1 tracking-wider text-base">${hist}</span>
         </div>
 
+        <!-- Idea Principal -->
+        <div class="text-xs text-gray-400 bg-gray-800/50 p-2 rounded-lg relative group/idea">
+            <div class="flex justify-between items-center mb-1">
+                <span class="font-bold text-gray-300">💡 Idea Principal:</span>
+                <button onclick="editTraderIdea('${t.id}', '${(t.mainIdea || '').replace(/'/g, "\\'")}')" class="text-blue-400 hover:text-blue-300 text-[10px] opacity-0 group-hover/idea:opacity-100 transition-opacity flex items-center gap-1">
+                    ✏️ Editar
+                </button>
+            </div>
+            <div class="italic break-words ${!t.mainIdea ? 'text-gray-600' : ''}">
+                ${t.mainIdea || 'Sin idea registrada.'}
+            </div>
+        </div>
+
         <!-- Controles de Estado -->
         <div class="flex gap-2 mt-1">
             <button onclick="setTraderState('${t.id}', 'alcista')" 
@@ -1248,6 +1261,22 @@ function setTraderState(id, state) {
         }
     })
     .catch(e => console.error('Error cambiando estado:', e));
+}
+
+function editTraderIdea(id, currentIdea) {
+    customPrompt('💡 Escribe la idea principal (vacío para borrar):', (newIdea) => {
+        fetch(`/admin/traders/${id}/idea`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: TRADER_PASSWORD, mainIdea: newIdea.trim() })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) loadTraders();
+            else alert('Error: ' + d.message);
+        })
+        .catch(e => console.error('Error actualizando idea:', e));
+    }, currentIdea);
 }
 
 function resolveTrader(id, result) {
