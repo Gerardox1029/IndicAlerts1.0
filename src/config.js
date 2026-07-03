@@ -3,14 +3,14 @@ const path = require('path');
 
 const SYMBOLS = [
     'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', // Large Caps
-    'DOGEUSDT', 'AVAXUSDT', 'ADAUSDT', 'BCHUSDT','AAVEUSDT',// Mid Caps
-    'RENDERUSDT', 'NEARUSDT', 'WLDUSDT', 'SUIUSDT','POPCATUSDT' // Small Caps
+    'DOGEUSDT', 'AVAXUSDT', 'ADAUSDT', 'BCHUSDT', 'AAVEUSDT',// Mid Caps
+    'RENDERUSDT', 'NEARUSDT', 'WLDUSDT', 'SUIUSDT' // Small Caps
 ];
 
 const CATEGORIES = {
     'Large Caps': ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT'],
-    'Mid Caps': ['DOGEUSDT', 'AVAXUSDT', 'ADAUSDT', 'BCHUSDT','AAVEUSDT'],
-    'Small Caps': ['RENDERUSDT', 'NEARUSDT', 'WLDUSDT', 'SUIUSDT','POPCATUSDT']
+    'Mid Caps': ['DOGEUSDT', 'AVAXUSDT', 'ADAUSDT', 'BCHUSDT', 'AAVEUSDT'],
+    'Small Caps': ['RENDERUSDT', 'NEARUSDT', 'WLDUSDT', 'SUIUSDT']
 };
 
 const INTERVALS = ['2h'];
