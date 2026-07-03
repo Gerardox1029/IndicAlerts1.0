@@ -61,8 +61,9 @@ async def main():
                 tmp.write(base64.b64decode(encoded))
                 temp_image = tmp.name
 
+        import random
         results = []
-        for chat_id in groups:
+        for idx, chat_id in enumerate(groups):
             try:
                 # Telethon handles @usernames and -IDs
                 target = chat_id
@@ -76,6 +77,10 @@ async def main():
                 results.append({"group": chat_id, "success": True})
             except Exception as e:
                 results.append({"group": chat_id, "success": False, "error": str(e)})
+
+            if idx < len(groups) - 1:
+                delay = random.randint(3, 15)
+                await asyncio.sleep(delay)
 
         if temp_image and os.path.exists(temp_image):
             os.remove(temp_image)
