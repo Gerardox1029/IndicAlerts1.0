@@ -869,7 +869,13 @@ function sendGroupBroadcast() {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert(`✅ Mensaje enviado con éxito a ${selectedGroups.length} grupos.`);
+            const failures = data.results ? data.results.filter(r => !r.success) : [];
+            if (failures.length > 0) {
+                const errorMsgs = failures.map(f => `- Grupo/Canal ${f.group}: ${f.error}`).join('\n');
+                alert(`⚠️ Algunos mensajes no se enviaron:\n\n${errorMsgs}`);
+            } else {
+                alert(`✅ Mensaje enviado con éxito a ${selectedGroups.length} grupos.`);
+            }
             document.getElementById('broadcast-message-text').value = '';
             const previewContainer = document.getElementById('image-preview-container');
             const previewImg = document.getElementById('broadcast-image-preview');

@@ -70,16 +70,19 @@ async def main():
                 if str(chat_id).isdigit() or (str(chat_id).startswith('-') and str(chat_id)[1:].isdigit()):
                     target = int(chat_id)
                 
+                # Resolve the entity first to avoid ChannelInvalidError / Invalid channel object
+                entity = await client.get_entity(target)
+                
                 if temp_image:
-                    await client.send_file(target, temp_image, caption=message, parse_mode='html')
+                    await client.send_file(entity, temp_image, caption=message, parse_mode='html')
                 else:
-                    await client.send_message(target, message, parse_mode='html')
+                    await client.send_message(entity, message, parse_mode='html')
                 results.append({"group": chat_id, "success": True})
             except Exception as e:
                 results.append({"group": chat_id, "success": False, "error": str(e)})
 
             if idx < len(groups) - 1:
-                delay = random.randint(3, 15)
+                delay = random.randint(5, 15)
                 await asyncio.sleep(delay)
 
         if temp_image and os.path.exists(temp_image):
