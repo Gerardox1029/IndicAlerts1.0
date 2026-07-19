@@ -10,7 +10,7 @@ const {
     AUDIOS_FILE,
     SYMBOLS,
     CATEGORIES,
-    ADMIN_CHAT_ID
+    ADMIN_ID
 } = require('./config');
 const state = require('./services/state');
 const { saveUser, User, Sticker, Audio } = require('./db/mongo');
@@ -268,7 +268,7 @@ async function simulateSignalEffect(symbol, type, options = {}) {
 // Bot Initialization
 function initBot() {
     if (TELEGRAM_TOKEN && TELEGRAM_TOKEN !== 'your_telegram_bot_token_here') {
-        bot = new TelegramBot(TELEGRAM_TOKEN, { 
+        bot = new TelegramBot(TELEGRAM_TOKEN, {
             polling: true,
             request: { timeout: 30000 }
         });
@@ -703,7 +703,7 @@ By Ditox🔮
         const chatId = msg.chat.id;
 
         // Sticker capture
-        if (msg.sticker && String(chatId) === String(ADMIN_CHAT_ID)) {
+        if (msg.sticker && String(chatId) === String(ADMIN_ID)) {
             const fileId = msg.sticker.file_id;
             if (saveSticker(fileId)) {
                 bot.sendMessage(chatId, `✅ Sticker guardado en la base de datos.`);
@@ -712,7 +712,7 @@ By Ditox🔮
         }
 
         // Audio capture
-        if ((msg.audio || msg.voice) && String(chatId) === String(ADMIN_CHAT_ID)) {
+        if ((msg.audio || msg.voice) && String(chatId) === String(ADMIN_ID)) {
             const fileId = msg.audio ? msg.audio.file_id : msg.voice.file_id;
             if (saveAudio(fileId)) {
                 bot.sendMessage(chatId, `✅ Audio guardado en la base de datos.`);
