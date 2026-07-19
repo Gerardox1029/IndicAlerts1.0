@@ -354,7 +354,17 @@ function setupListeners() {
         try {
             await bot.sendAudio(chatId, randomAudio, sendOptions);
         } catch (e) {
-            await bot.sendVoice(chatId, randomAudio, sendOptions).catch(err => console.error("Error enviando audio/voz:", err.message));
+            await bot.sendVoice(chatId, randomAudio, sendOptions).catch(err => {
+                const errMsg = err.message || '';
+                console.error("Error enviando audio/voz:", errMsg);
+                if (errMsg.includes('wrong file identifier')) {
+                    console.log(`🗑️ Eliminando audio inválido: ${randomAudio}`);
+                    const idx = state.audioDatabase.indexOf(randomAudio);
+                    if (idx > -1) state.audioDatabase.splice(idx, 1);
+                    if (Audio) Audio.deleteOne({ fileId: randomAudio }).catch(console.error);
+                    bot.sendMessage(chatId, "❌ El audio ya no es válido (¿token cambiado?). Fue eliminado automáticamente.", sendOptions);
+                }
+            });
         }
     });
 
