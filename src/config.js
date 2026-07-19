@@ -22,6 +22,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const TARGET_GROUP_ID = process.env.TELEGRAM_REPORT_GROUP_ID || '-1003055730763';
 const THREAD_ID = process.env.TELEGRAM_THREAD_ID || '15766';
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '1985505500';
 
 // Paths
 // Paths
@@ -43,5 +44,6 @@ module.exports = {
     STICKERS_FILE,
     AUDIOS_FILE,
     PUBLIC_DIR,
-    ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'awd '
+    ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'awd ',
+    ADMIN_CHAT_ID
 };

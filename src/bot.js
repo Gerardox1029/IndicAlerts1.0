@@ -9,7 +9,8 @@ const {
     STICKERS_FILE,
     AUDIOS_FILE,
     SYMBOLS,
-    CATEGORIES
+    CATEGORIES,
+    ADMIN_CHAT_ID
 } = require('./config');
 const state = require('./services/state');
 const { saveUser, User, Sticker, Audio } = require('./db/mongo');
@@ -702,7 +703,7 @@ By Ditox🔮
         const chatId = msg.chat.id;
 
         // Sticker capture
-        if (msg.sticker && String(chatId) === '1985505500') {
+        if (msg.sticker && String(chatId) === String(ADMIN_CHAT_ID)) {
             const fileId = msg.sticker.file_id;
             if (saveSticker(fileId)) {
                 bot.sendMessage(chatId, `✅ Sticker guardado en la base de datos.`);
@@ -711,7 +712,7 @@ By Ditox🔮
         }
 
         // Audio capture
-        if ((msg.audio || msg.voice) && String(chatId) === '1985505500') {
+        if ((msg.audio || msg.voice) && String(chatId) === String(ADMIN_CHAT_ID)) {
             const fileId = msg.audio ? msg.audio.file_id : msg.voice.file_id;
             if (saveAudio(fileId)) {
                 bot.sendMessage(chatId, `✅ Audio guardado en la base de datos.`);
