@@ -12,7 +12,7 @@ const {
     CATEGORIES
 } = require('./config');
 const state = require('./services/state');
-const { saveUser, Sticker, Audio } = require('./db/mongo');
+const { saveUser, User, Sticker, Audio } = require('./db/mongo');
 const { fetchData } = require('./api/binance');
 const { calcularIndicadores, calcularTICK } = require('./engine/indicators');
 const { getPeruTime, formatPrice } = require('./utils/helpers');
@@ -172,7 +172,18 @@ async function enviarTelegram(messageText, symbol = null, options = {}) {
             }
 
         } catch (error) {
-            console.error(`❌ ERROR enviando a ${chatId}:`, error.message);
+            const errorMsg = error.message || '';
+            const isBlocked = errorMsg.includes('chat not found') || errorMsg.includes('bot was blocked by the user');
+
+            if (isBlocked) {
+                console.log(`⚠️ Usuario inactivo/bloqueado detectado (${chatId}). Eliminando de DB...`);
+                delete userDatabase[chatId];
+                if (User) {
+                    User.deleteOne({ id: String(chatId) }).catch(e => console.error("Error al borrar usuario inactivo de Mongo:", e.message));
+                }
+            } else {
+                console.error(`❌ ERROR enviando a ${chatId}:`, errorMsg);
+            }
         }
     }
     return sentMessages;
@@ -256,7 +267,10 @@ async function simulateSignalEffect(symbol, type, options = {}) {
 // Bot Initialization
 function initBot() {
     if (TELEGRAM_TOKEN && TELEGRAM_TOKEN !== 'your_telegram_bot_token_here') {
-        bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
+        bot = new TelegramBot(TELEGRAM_TOKEN, { 
+            polling: true,
+            request: { timeout: 30000 }
+        });
         console.log('Telegram Bot iniciado con polling.');
         setupListeners();
     } else {

@@ -1,4 +1,14 @@
 require('dotenv').config();
+
+// Prevención de Crash por Network/TLS y Sanitización de Logs
+process.on('uncaughtException', (err) => {
+    console.error('❌ Uncaught Exception:', err.message || err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    const msg = reason && reason.message ? reason.message : reason;
+    console.error('❌ Unhandled Rejection:', msg);
+});
+
 const { connectDB, loadUsers } = require('./src/db/mongo');
 const { initBot, setProcesarMercado } = require('./src/bot');
 const { startServer } = require('./src/server');
