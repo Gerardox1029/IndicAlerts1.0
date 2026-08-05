@@ -2101,6 +2101,49 @@
 }
 
 
+Para la fase de sospecha exlusivamente en algún lugar, puede ser la parte inferior derecha:
+
+<!-- From Uiverse.io by BlackisPlay --> 
+<div id="ghost">
+  <div id="red">
+    <div id="pupil"></div>
+    <div id="pupil1"></div>
+    <div id="eye"></div>
+    <div id="eye1"></div>
+    <div id="top0"></div>
+    <div id="top1"></div>
+    <div id="top2"></div>
+    <div id="top3"></div>
+    <div id="top4"></div>
+    <div id="st0"></div>
+    <div id="st1"></div>
+    <div id="st2"></div>
+    <div id="st3"></div>
+    <div id="st4"></div>
+    <div id="st5"></div>
+    <div id="an1"></div>
+    <div id="an2"></div>
+    <div id="an3"></div>
+    <div id="an4"></div>
+    <div id="an5"></div>
+    <div id="an6"></div>
+    <div id="an7"></div>
+    <div id="an8"></div>
+    <div id="an9"></div>
+    <div id="an10"></div>
+    <div id="an11"></div>
+    <div id="an12"></div>
+    <div id="an13"></div>
+    <div id="an14"></div>
+    <div id="an15"></div>
+    <div id="an16"></div>
+    <div id="an17"></div>
+    <div id="an18"></div>
+  </div>
+  <div id="shadow"></div>
+</div>
+
+
 /* From Uiverse.io by BlackisPlay */ 
 #ghost {
   position: relative;
@@ -2419,6 +2462,61 @@
     opacity: 0.2;
   }
 }
+
+
+
+Para la fase de idea:
+
+<!-- From Uiverse.io by JkHuger --> 
+<div class="box-of-star1">
+    <div class="star star-position1"></div>
+    <div class="star star-position2"></div>
+    <div class="star star-position3"></div>
+    <div class="star star-position4"></div>
+    <div class="star star-position5"></div>
+    <div class="star star-position6"></div>
+    <div class="star star-position7"></div>
+  </div>
+  <div class="box-of-star2">
+    <div class="star star-position1"></div>
+    <div class="star star-position2"></div>
+    <div class="star star-position3"></div>
+    <div class="star star-position4"></div>
+    <div class="star star-position5"></div>
+    <div class="star star-position6"></div>
+    <div class="star star-position7"></div>
+  </div>
+  <div class="box-of-star3">
+    <div class="star star-position1"></div>
+    <div class="star star-position2"></div>
+    <div class="star star-position3"></div>
+    <div class="star star-position4"></div>
+    <div class="star star-position5"></div>
+    <div class="star star-position6"></div>
+    <div class="star star-position7"></div>
+  </div>
+  <div class="box-of-star4">
+    <div class="star star-position1"></div>
+    <div class="star star-position2"></div>
+    <div class="star star-position3"></div>
+    <div class="star star-position4"></div>
+    <div class="star star-position5"></div>
+    <div class="star star-position6"></div>
+    <div class="star star-position7"></div>
+  </div>
+  <div data-js="astro" class="astronaut">
+    <div class="head"></div>
+    <div class="arm arm-left"></div>
+    <div class="arm arm-right"></div>
+    <div class="body">
+      <div class="panel"></div>
+    </div>
+    <div class="leg leg-left"></div>
+    <div class="leg leg-right"></div>
+    <div class="schoolbag"></div>
+  </div>
+
+
 
 
 
@@ -2752,6 +2850,82 @@
 }
 
 
+para la fase de actualización:
+
+<!-- From Uiverse.io by Nawsome --> 
+		<svg class="pl" viewBox="0 0 160 160" width="160px" height="160px" xmlns="http://www.w3.org/2000/svg">
+			<defs>
+				<linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+					<stop offset="0%" stop-color="#000"></stop>
+					<stop offset="100%" stop-color="#fff"></stop>
+				</linearGradient>
+				<mask id="mask1">
+					<rect x="0" y="0" width="160" height="160" fill="url(#grad)"></rect>
+				</mask>
+				<mask id="mask2">
+					<rect x="28" y="28" width="104" height="104" fill="url(#grad)"></rect>
+				</mask>
+			</defs>
+			
+			<g>
+				<g class="pl__ring-rotate">
+					<circle class="pl__ring-stroke" cx="80" cy="80" r="72" fill="none" stroke="hsl(223,90%,55%)" stroke-width="16" stroke-dasharray="452.39 452.39" stroke-dashoffset="452" stroke-linecap="round" transform="rotate(-45,80,80)"></circle>
+				</g>
+			</g>
+			<g mask="url(#mask1)">
+				<g class="pl__ring-rotate">
+					<circle class="pl__ring-stroke" cx="80" cy="80" r="72" fill="none" stroke="hsl(193,90%,55%)" stroke-width="16" stroke-dasharray="452.39 452.39" stroke-dashoffset="452" stroke-linecap="round" transform="rotate(-45,80,80)"></circle>
+				</g>
+			</g>
+			
+			<g>
+				<g stroke-width="4" stroke-dasharray="12 12" stroke-dashoffset="12" stroke-linecap="round" transform="translate(80,80)">
+					<polyline class="pl__tick" stroke="hsl(223,10%,90%)" points="0,2 0,14" transform="rotate(-135,0,0) translate(0,40)"></polyline>
+					<polyline class="pl__tick" stroke="hsl(223,10%,90%)" points="0,2 0,14" transform="rotate(-90,0,0) translate(0,40)"></polyline>
+					<polyline class="pl__tick" stroke="hsl(223,10%,90%)" points="0,2 0,14" transform="rotate(-45,0,0) translate(0,40)"></polyline>
+					<polyline class="pl__tick" stroke="hsl(223,10%,90%)" points="0,2 0,14" transform="rotate(0,0,0) translate(0,40)"></polyline>
+					<polyline class="pl__tick" stroke="hsl(223,10%,90%)" points="0,2 0,14" transform="rotate(45,0,0) translate(0,40)"></polyline>
+					<polyline class="pl__tick" stroke="hsl(223,10%,90%)" points="0,2 0,14" transform="rotate(90,0,0) translate(0,40)"></polyline>
+					<polyline class="pl__tick" stroke="hsl(223,10%,90%)" points="0,2 0,14" transform="rotate(135,0,0) translate(0,40)"></polyline>
+					<polyline class="pl__tick" stroke="hsl(223,10%,90%)" points="0,2 0,14" transform="rotate(180,0,0) translate(0,40)"></polyline>
+				</g>
+			</g>
+			<g mask="url(#mask1)">
+				<g stroke-width="4" stroke-dasharray="12 12" stroke-dashoffset="12" stroke-linecap="round" transform="translate(80,80)">
+					<polyline class="pl__tick" stroke="hsl(223,90%,80%)" points="0,2 0,14" transform="rotate(-135,0,0) translate(0,40)"></polyline>
+					<polyline class="pl__tick" stroke="hsl(223,90%,80%)" points="0,2 0,14" transform="rotate(-90,0,0) translate(0,40)"></polyline>
+					<polyline class="pl__tick" stroke="hsl(223,90%,80%)" points="0,2 0,14" transform="rotate(-45,0,0) translate(0,40)"></polyline>
+					<polyline class="pl__tick" stroke="hsl(223,90%,80%)" points="0,2 0,14" transform="rotate(0,0,0) translate(0,40)"></polyline>
+					<polyline class="pl__tick" stroke="hsl(223,90%,80%)" points="0,2 0,14" transform="rotate(45,0,0) translate(0,40)"></polyline>
+					<polyline class="pl__tick" stroke="hsl(223,90%,80%)" points="0,2 0,14" transform="rotate(90,0,0) translate(0,40)"></polyline>
+					<polyline class="pl__tick" stroke="hsl(223,90%,80%)" points="0,2 0,14" transform="rotate(135,0,0) translate(0,40)"></polyline>
+					<polyline class="pl__tick" stroke="hsl(223,90%,80%)" points="0,2 0,14" transform="rotate(180,0,0) translate(0,40)"></polyline>
+				</g>
+			</g>
+			
+			<g>
+				<g transform="translate(64,28)">
+					<g class="pl__arrows" transform="rotate(45,16,52)">
+						<path fill="hsl(3,90%,55%)" d="M17.998,1.506l13.892,43.594c.455,1.426-.56,2.899-1.998,2.899H2.108c-1.437,0-2.452-1.473-1.998-2.899L14.002,1.506c.64-2.008,3.356-2.008,3.996,0Z"></path>
+						<path fill="hsl(223,10%,90%)" d="M14.009,102.499L.109,58.889c-.453-1.421,.559-2.889,1.991-2.889H29.899c1.433,0,2.444,1.468,1.991,2.889l-13.899,43.61c-.638,2.001-3.345,2.001-3.983,0Z"></path>
+					</g>
+				</g>
+			</g>
+			<g mask="url(#mask2)">
+				<g transform="translate(64,28)">
+					<g class="pl__arrows" transform="rotate(45,16,52)">
+						<path fill="hsl(333,90%,55%)" d="M17.998,1.506l13.892,43.594c.455,1.426-.56,2.899-1.998,2.899H2.108c-1.437,0-2.452-1.473-1.998-2.899L14.002,1.506c.64-2.008,3.356-2.008,3.996,0Z"></path>
+						<path fill="hsl(223,90%,80%)" d="M14.009,102.499L.109,58.889c-.453-1.421,.559-2.889,1.991-2.889H29.899c1.433,0,2.444,1.468,1.991,2.889l-13.899,43.61c-.638,2.001-3.345,2.001-3.983,0Z"></path>
+					</g>
+				</g>
+			</g>
+		</svg>
+
+
+
+
+
+
 /* From Uiverse.io by Nawsome */ 
 .pl {
   display: block;
@@ -2870,737 +3044,25 @@
 
 
 
-/* From Uiverse.io by dexter-st */ 
-.loader-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 120px;
-  width: auto;
-  margin: 2rem;
+Para la fase resultado, es importante destacar que el contenido del texto en vez de "Generating" será editable por el admin:
+
+<!-- From Uiverse.io by dexter-st --> 
+<div class="loader-wrapper">
+  <span class="loader-letter">G</span>
+  <span class="loader-letter">e</span>
+  <span class="loader-letter">n</span>
+  <span class="loader-letter">e</span>
+  <span class="loader-letter">r</span>
+  <span class="loader-letter">a</span>
+  <span class="loader-letter">t</span>
+  <span class="loader-letter">i</span>
+  <span class="loader-letter">n</span>
+  <span class="loader-letter">g</span>
+
+  <div class="loader"></div>
+</div>
 
-  font-family: "Poppins", sans-serif;
-  font-size: 1.6em;
-  font-weight: 600;
-  user-select: none;
-  color: #fff;
 
-  scale: 2;
-}
-
-.loader {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 100%;
-  z-index: 1;
-
-  background-color: transparent;
-  mask: repeating-linear-gradient(
-    90deg,
-    transparent 0,
-    transparent 6px,
-    black 7px,
-    black 8px
-  );
-}
-
-.loader::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-
-  background-image: radial-gradient(circle at 50% 50%, #ff0 0%, transparent 50%),
-    radial-gradient(circle at 45% 45%, #f00 0%, transparent 45%),
-    radial-gradient(circle at 55% 55%, #0ff 0%, transparent 45%),
-    radial-gradient(circle at 45% 55%, #0f0 0%, transparent 45%),
-    radial-gradient(circle at 55% 45%, #00f 0%, transparent 45%);
-  mask: radial-gradient(
-    circle at 50% 50%,
-    transparent 0%,
-    transparent 10%,
-    black 25%
-  );
-  animation:
-    transform-animation 2s infinite alternate,
-    opacity-animation 4s infinite;
-  animation-timing-function: cubic-bezier(0.6, 0.8, 0.5, 1);
-}
-
-@keyframes transform-animation {
-  0% {
-    transform: translate(-55%);
-  }
-  100% {
-    transform: translate(55%);
-  }
-}
-
-@keyframes opacity-animation {
-  0%,
-  100% {
-    opacity: 0;
-  }
-  15% {
-    opacity: 1;
-  }
-  65% {
-    opacity: 0;
-  }
-}
-
-.loader-letter {
-  display: inline-block;
-  opacity: 0;
-  animation: loader-letter-anim 4s infinite linear;
-  z-index: 2;
-}
-
-.loader-letter:nth-child(1) {
-  animation-delay: 0.1s;
-}
-.loader-letter:nth-child(2) {
-  animation-delay: 0.205s;
-}
-.loader-letter:nth-child(3) {
-  animation-delay: 0.31s;
-}
-.loader-letter:nth-child(4) {
-  animation-delay: 0.415s;
-}
-.loader-letter:nth-child(5) {
-  animation-delay: 0.521s;
-}
-.loader-letter:nth-child(6) {
-  animation-delay: 0.626s;
-}
-.loader-letter:nth-child(7) {
-  animation-delay: 0.731s;
-}
-.loader-letter:nth-child(8) {
-  animation-delay: 0.837s;
-}
-.loader-letter:nth-child(9) {
-  animation-delay: 0.942s;
-}
-.loader-letter:nth-child(10) {
-  animation-delay: 1.047s;
-}
-
-@keyframes loader-letter-anim {
-  0% {
-    opacity: 0;
-  }
-  5% {
-    opacity: 1;
-    text-shadow: 0 0 4px #fff;
-    transform: scale(1.1) translateY(-2px);
-  }
-  20% {
-    opacity: 0.2;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-
-
-#ghost {
-  position: relative;
-  scale: 0.8;
-}
-
-#red {
-  animation: upNDown infinite 0.5s;
-  position: relative;
-  width: 140px;
-  height: 140px;
-  display: grid;
-  grid-template-columns: repeat(14, 1fr);
-  grid-template-rows: repeat(14, 1fr);
-  grid-column-gap: 0px;
-  grid-row-gap: 0px;
-  grid-template-areas:
-    "a1  a2  a3  a4  a5  top0  top0  top0  top0  a10 a11 a12 a13 a14"
-    "b1  b2  b3  top1 top1 top1 top1 top1 top1 top1 top1 b12 b13 b14"
-    "c1 c2 top2 top2 top2 top2 top2 top2 top2 top2 top2 top2 c13 c14"
-    "d1 top3 top3 top3 top3 top3 top3 top3 top3 top3 top3 top3 top3 d14"
-    "e1 top3 top3 top3 top3 top3 top3 top3 top3 top3 top3 top3 top3 e14"
-    "f1 top3 top3 top3 top3 top3 top3 top3 top3 top3 top3 top3 top3 f14"
-    "top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4"
-    "top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4"
-    "top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4"
-    "top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4"
-    "top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4"
-    "top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4 top4"
-    "st0 st0 an4 st1 an7 st2 an10 an10 st3 an13 st4 an16 st5 st5"
-    "an1 an2 an3 an5 an6 an8 an9 an9 an11 an12 an14 an15 an17 an18";
-}
-
-@keyframes upNDown {
-  0%,
-  49% {
-    transform: translateY(0px);
-  }
-  50%,
-  100% {
-    transform: translateY(-10px);
-  }
-}
-
-#top0,
-#top1,
-#top2,
-#top3,
-#top4,
-#st0,
-#st1,
-#st2,
-#st3,
-#st4,
-#st5 {
-  background-color: red;
-}
-
-#top0 {
-  grid-area: top0;
-}
-
-#top1 {
-  grid-area: top1;
-}
-
-#top2 {
-  grid-area: top2;
-}
-
-#top3 {
-  grid-area: top3;
-}
-
-#top4 {
-  grid-area: top4;
-}
-
-#st0 {
-  grid-area: st0;
-}
-
-#st1 {
-  grid-area: st1;
-}
-
-#st2 {
-  grid-area: st2;
-}
-
-#st3 {
-  grid-area: st3;
-}
-
-#st4 {
-  grid-area: st4;
-}
-
-#st5 {
-  grid-area: st5;
-}
-
-#an1 {
-  grid-area: an1;
-  animation: flicker0 infinite 0.5s;
-}
-
-#an18 {
-  grid-area: an18;
-  animation: flicker0 infinite 0.5s;
-}
-
-#an2 {
-  grid-area: an2;
-  animation: flicker1 infinite 0.5s;
-}
-
-#an17 {
-  grid-area: an17;
-  animation: flicker1 infinite 0.5s;
-}
-
-#an3 {
-  grid-area: an3;
-  animation: flicker1 infinite 0.5s;
-}
-
-#an16 {
-  grid-area: an16;
-  animation: flicker1 infinite 0.5s;
-}
-
-#an4 {
-  grid-area: an4;
-  animation: flicker1 infinite 0.5s;
-}
-
-#an15 {
-  grid-area: an15;
-  animation: flicker1 infinite 0.5s;
-}
-
-#an6 {
-  grid-area: an6;
-  animation: flicker0 infinite 0.5s;
-}
-
-#an12 {
-  grid-area: an12;
-  animation: flicker0 infinite 0.5s;
-}
-
-#an7 {
-  grid-area: an7;
-  animation: flicker0 infinite 0.5s;
-}
-
-#an13 {
-  grid-area: an13;
-  animation: flicker0 infinite 0.5s;
-}
-
-#an9 {
-  grid-area: an9;
-  animation: flicker1 infinite 0.5s;
-}
-
-#an10 {
-  grid-area: an10;
-  animation: flicker1 infinite 0.5s;
-}
-
-#an8 {
-  grid-area: an8;
-  animation: flicker0 infinite 0.5s;
-}
-
-#an11 {
-  grid-area: an11;
-  animation: flicker0 infinite 0.5s;
-}
-
-@keyframes flicker0 {
-  0%,
-  49% {
-    background-color: red;
-  }
-  50%,
-  100% {
-    background-color: transparent;
-  }
-}
-
-@keyframes flicker1 {
-  0%,
-  49% {
-    background-color: transparent;
-  }
-  50%,
-  100% {
-    background-color: red;
-  }
-}
-
-#eye {
-  width: 40px;
-  height: 50px;
-  position: absolute;
-  top: 30px;
-  left: 10px;
-}
-
-#eye::before {
-  content: "";
-  background-color: white;
-  width: 20px;
-  height: 50px;
-  transform: translateX(10px);
-  display: block;
-  position: absolute;
-}
-
-#eye::after {
-  content: "";
-  background-color: white;
-  width: 40px;
-  height: 30px;
-  transform: translateY(10px);
-  display: block;
-  position: absolute;
-}
-
-#eye1 {
-  width: 40px;
-  height: 50px;
-  position: absolute;
-  top: 30px;
-  right: 30px;
-}
-
-#eye1::before {
-  content: "";
-  background-color: white;
-  width: 20px;
-  height: 50px;
-  transform: translateX(10px);
-  display: block;
-  position: absolute;
-}
-
-#eye1::after {
-  content: "";
-  background-color: white;
-  width: 40px;
-  height: 30px;
-  transform: translateY(10px);
-  display: block;
-  position: absolute;
-}
-
-#pupil {
-  width: 20px;
-  height: 20px;
-  background-color: blue;
-  position: absolute;
-  top: 50px;
-  left: 10px;
-  z-index: 1;
-  animation: eyesMovement infinite 3s;
-}
-
-#pupil1 {
-  width: 20px;
-  height: 20px;
-  background-color: blue;
-  position: absolute;
-  top: 50px;
-  right: 50px;
-  z-index: 1;
-  animation: eyesMovement infinite 3s;
-}
-
-@keyframes eyesMovement {
-  0%,
-  49% {
-    transform: translateX(0px);
-  }
-  50%,
-  99% {
-    transform: translateX(10px);
-  }
-  100% {
-    transform: translateX(0px);
-  }
-}
-
-#shadow {
-  background-color: black;
-  width: 140px;
-  height: 140px;
-  position: absolute;
-  border-radius: 50%;
-  transform: rotateX(80deg);
-  filter: blur(20px);
-  top: 80%;
-  animation: shadowMovement infinite 0.5s;
-}
-
-@keyframes shadowMovement {
-  0%,
-  49% {
-    opacity: 0.5;
-  }
-  50%,
-  100% {
-    opacity: 0.2;
-  }
-}
-@keyframes snow {
-  0% {
-    opacity: 0;
-    transform: translateY(0px);
-  }
-
-  20% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(650px);
-  }
-}
-
-@keyframes astronaut {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.box-of-star1,
-.box-of-star2,
-.box-of-star3,
-.box-of-star4 {
-  width: 100%;
-  position: absolute;
-  z-index: 10;
-  left: 0;
-  top: 0;
-  transform: translateY(0px);
-  height: 700px;
-}
-
-.box-of-star1 {
-  animation: snow 5s linear infinite;
-}
-
-.box-of-star2 {
-  animation: snow 5s -1.64s linear infinite;
-}
-
-.box-of-star3 {
-  animation: snow 5s -2.30s linear infinite;
-}
-
-.box-of-star4 {
-  animation: snow 5s -3.30s linear infinite;
-}
-
-.star {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background-color: #FFF;
-  position: absolute;
-  z-index: 10;
-  opacity: 0.7;
-}
-
-.star:before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: #FFF;
-  position: absolute;
-  z-index: 10;
-  top: 80px;
-  left: 70px;
-  opacity: .7;
-}
-
-.star:after {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #FFF;
-  position: absolute;
-  z-index: 10;
-  top: 8px;
-  left: 170px;
-  opacity: .9;
-}
-
-.star-position1 {
-  top: 30px;
-  left: 20px;
-}
-
-.star-position2 {
-  top: 110px;
-  left: 250px;
-}
-
-.star-position3 {
-  top: 60px;
-  left: 570px;
-}
-
-.star-position4 {
-  top: 120px;
-  left: 900px;
-}
-
-.star-position5 {
-  top: 20px;
-  left: 1120px;
-}
-
-.star-position6 {
-  top: 90px;
-  left: 1280px;
-}
-
-.star-position7 {
-  top: 30px;
-  left: 1480px;
-}
-
-.astronaut {
-  width: 250px;
-  height: 300px;
-  position: absolute;
-  z-index: 11;
-  top: calc(50% - 150px);
-  left: calc(50% - 125px);
-  animation: astronaut 5s linear infinite;
-}
-
-.schoolbag {
-  width: 100px;
-  height: 150px;
-  position: absolute;
-  z-index: 1;
-  top: calc(50% - 75px);
-  left: calc(50% - 50px);
-  background-color: #94b7ca;
-  border-radius: 50px 50px 0 0 / 30px 30px 0 0;
-}
-
-.head {
-  width: 97px;
-  height: 80px;
-  position: absolute;
-  z-index: 3;
-  background: -webkit-linear-gradient(left, #e3e8eb 0%, #e3e8eb 50%, #fbfdfa 50%, #fbfdfa 100%);
-  border-radius: 50%;
-  top: 34px;
-  left: calc(50% - 47.5px);
-}
-
-.head:after {
-  content: "";
-  width: 60px;
-  height: 50px;
-  position: absolute;
-  top: calc(50% - 25px);
-  left: calc(50% - 30px);
-  background: -webkit-linear-gradient(top, #15aece 0%, #15aece 50%, #0391bf 50%, #0391bf 100%);
-  border-radius: 15px;
-}
-
-.head:before {
-  content: "";
-  width: 12px;
-  height: 25px;
-  position: absolute;
-  top: calc(50% - 12.5px);
-  left: -4px;
-  background-color: #618095;
-  border-radius: 5px;
-  box-shadow: 92px 0px 0px #618095;
-}
-
-.body {
-  width: 85px;
-  height: 100px;
-  position: absolute;
-  z-index: 2;
-  background-color: #fffbff;
-  border-radius: 40px / 20px;
-  top: 105px;
-  left: calc(50% - 41px);
-  background: -webkit-linear-gradient(left, #e3e8eb 0%, #e3e8eb 50%, #fbfdfa 50%, #fbfdfa 100%);
-}
-
-.panel {
-  width: 60px;
-  height: 40px;
-  position: absolute;
-  top: 20px;
-  left: calc(50% - 30px);
-  background-color: #b7cceb;
-}
-
-.panel:before {
-  content: "";
-  width: 30px;
-  height: 5px;
-  position: absolute;
-  top: 9px;
-  left: 7px;
-  background-color: #fbfdfa;
-  box-shadow: 0px 9px 0px #fbfdfa, 0px 18px 0px #fbfdfa;
-}
-
-.panel:after {
-  content: "";
-  width: 8px;
-  height: 8px;
-  position: absolute;
-  top: 9px;
-  right: 7px;
-  background-color: #fbfdfa;
-  border-radius: 50%;
-  box-shadow: 0px 14px 0px 2px #fbfdfa;
-}
-
-.arm {
-  width: 80px;
-  height: 30px;
-  position: absolute;
-  top: 121px;
-  z-index: 2;
-}
-
-.arm-left {
-  left: 30px;
-  background-color: #e3e8eb;
-  border-radius: 0 0 0 39px;
-}
-
-.arm-right {
-  right: 30px;
-  background-color: #fbfdfa;
-  border-radius: 0 0 39px 0;
-}
-
-.arm-left:before,
-.arm-right:before {
-  content: "";
-  width: 30px;
-  height: 70px;
-  position: absolute;
-  top: -40px;
-}
-
-.arm-left:before {
-  border-radius: 50px 50px 0px 120px / 50px 50px 0 110px;
-  left: 0;
-  background-color: #e3e8eb;
-}
-
-.arm-right:before {
-  border-radius: 50px 50px 120px 0 / 50px 50px 110px 0;
-  right: 0;
-  background-color: #fbfdfa;
-}
-
-.arm-left:after,
-.arm-right:after {
-  content: "";
-  width: 30px;
-  height: 10px;
-  position: absolute;
-  top: -24px;
 /* From Uiverse.io by dexter-st */ 
 .loader-wrapper {
   position: relative;

@@ -1324,8 +1324,9 @@ function deleteTrader(id) {
 
 let currentIdeaData = null;
 let currentPhaseView = 1;
+let lastIdeaJSON = '';
 
-async function loadDitoxIdea() {
+async function loadDitoxIdea(forceRender = false) {
     try {
         const res = await fetch('/api/ideas/active');
         const data = await res.json();
@@ -1340,6 +1341,10 @@ async function loadDitoxIdea() {
                 el.classList.add('hidden');
             }
         });
+
+        const ideaJSON = JSON.stringify(data);
+        const dataChanged = ideaJSON !== lastIdeaJSON;
+        lastIdeaJSON = ideaJSON;
         
         if (data.empty || !data.phases) {
             currentIdeaData = null;
@@ -1357,9 +1362,11 @@ async function loadDitoxIdea() {
             document.getElementById('idea-dir').className = data.direction === 'Long' ? 'text-2xl font-black text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]' : 'text-2xl font-black text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.5)]';
             document.getElementById('idea-tf').textContent = data.timeframe;
             
-            if (adminMode) {
-                document.getElementById('edit-idea-dir').value = data.direction || 'Long';
-                document.getElementById('edit-idea-tf').value = data.timeframe || '4h';
+            const dirSelect = document.getElementById('edit-idea-dir');
+            const tfSelect = document.getElementById('edit-idea-tf');
+            if (adminMode && document.activeElement !== dirSelect && document.activeElement !== tfSelect) {
+                if (dirSelect) dirSelect.value = data.direction || 'Long';
+                if (tfSelect) tfSelect.value = data.timeframe || '4h';
             }
 
             // Update Spheres
@@ -1377,7 +1384,19 @@ async function loadDitoxIdea() {
                 }
             });
             
-            showPhase(currentPhaseView);
+            // Check if admin is currently typing or has pasted an image
+            const descInput = document.getElementById('edit-phase-desc');
+            const pasteArea = document.getElementById('paste-area');
+            const isUserEditing = adminMode && (
+                document.activeElement === descInput ||
+                document.activeElement === pasteArea ||
+                Boolean(window.pendingPhaseImage)
+            );
+
+            // Re-render phase UI only if forced (e.g. manual click/save) or if data changed AND user is not editing
+            if (forceRender || (dataChanged && !isUserEditing)) {
+                showPhase(currentPhaseView, forceRender);
+            }
         }
         
         // Load History
@@ -1386,20 +1405,22 @@ async function loadDitoxIdea() {
         if (histData && histData.length > 0) {
             document.getElementById('ideas-history-section').classList.remove('hidden');
             const tbody = document.getElementById('ideas-history-body');
-            tbody.innerHTML = histData.map(h => `
-                <tr class="border-b border-gray-700/50 hover:bg-white/5 transition-colors">
-                    <td class="py-3 px-4 text-xs font-mono text-gray-400">${new Date(h.archivedAt).toLocaleDateString()}</td>
-                    <td class="py-3 px-4 font-bold text-blue-300">${h.cycleName}</td>
-                    <td class="py-3 px-4 text-xs font-bold ${h.direction === 'Long' ? 'text-green-400' : 'text-red-400'}">${h.direction}</td>
-                    <td class="py-3 px-4 text-sm text-gray-300">${(h.phases && h.phases[h.phases.length-1] && h.phases[h.phases.length-1].description) ? h.phases[h.phases.length-1].description : 'Sin descripción'}</td>
-                </tr>
-            `).join('');
+            if (tbody) {
+                tbody.innerHTML = histData.map(h => `
+                    <tr class="border-b border-gray-700/50 hover:bg-white/5 transition-colors">
+                        <td class="py-3 px-4 text-xs font-mono text-gray-400">${new Date(h.archivedAt).toLocaleDateString()}</td>
+                        <td class="py-3 px-4 font-bold text-blue-300">${h.cycleName}</td>
+                        <td class="py-3 px-4 text-xs font-bold ${h.direction === 'Long' ? 'text-green-400' : 'text-red-400'}">${h.direction}</td>
+                        <td class="py-3 px-4 text-sm text-gray-300">${(h.phases && h.phases[h.phases.length-1] && h.phases[h.phases.length-1].description) ? h.phases[h.phases.length-1].description : 'Sin descripción'}</td>
+                    </tr>
+                `).join('');
+            }
         }
         
     } catch(e) { console.error("Error loading ideas:", e); }
 }
 
-function showPhase(num) {
+function showPhase(num, animate = true) {
     currentPhaseView = num;
     if (!currentIdeaData || !currentIdeaData.phases) return;
     
@@ -1420,18 +1441,16 @@ function showPhase(num) {
     const imgEl = document.getElementById('phase-image');
     const descEl = document.getElementById('phase-desc');
     const timeEl = document.getElementById('phase-last-updated');
-    
-    imgEl.classList.add('hidden');
-    descEl.innerHTML = '';
-    
     const container = document.getElementById('phase-content-container');
-    container.style.opacity = 0;
     
-    setTimeout(() => {
+    const updateDOM = () => {
         if (phase.image) {
             imgEl.src = phase.image;
             imgEl.classList.remove('hidden');
+        } else {
+            imgEl.classList.add('hidden');
         }
+
         if (phase.description) {
             descEl.innerHTML = phase.description.replace(/\n/g, '<br>');
         } else {
@@ -1448,55 +1467,127 @@ function showPhase(num) {
             document.getElementById('edit-phase-desc').value = phase.description || '';
             const pasteArea = document.getElementById('paste-area');
             if (pasteArea) {
-                pasteArea.innerHTML = phase.image ? '<span class="text-green-400 font-bold">✅ Imagen actual cargada. Presiona Ctrl+V para reemplazar.</span>' : '<span class="text-lg text-gray-400">Haz clic aquí y presiona <b>Ctrl + V</b> para pegar la captura</span>';
+                pasteArea.innerHTML = phase.image 
+                    ? '<span class="text-green-400 font-bold">✅ Imagen actual cargada. Presiona Ctrl+V para reemplazar.</span>' 
+                    : '<span class="text-lg text-gray-400">Haz clic aquí y presiona <b>Ctrl + V</b> para pegar la captura</span>';
             }
             window.pendingPhaseImage = null; 
         }
+
+        // Inject phase-specific animations
+        let animContainer = document.getElementById('phase-animation-container');
+        if (!animContainer) {
+            animContainer = document.createElement('div');
+            animContainer.id = 'phase-animation-container';
+            animContainer.className = 'absolute inset-0 pointer-events-none z-0 overflow-hidden rounded-3xl';
+            container.insertBefore(animContainer, container.firstChild);
+        }
         
-        container.style.opacity = 1;
-    }, 150);
+        animContainer.innerHTML = ''; // Clear previous animation
+        
+        if (num === 1) { // Sospecha - Ghost
+            animContainer.innerHTML = `
+<div id="ghost" style="position: absolute; bottom: 0px; right: 20px; transform: scale(0.7); opacity: 0.9;">
+  <div id="red">
+    <div id="pupil"></div><div id="pupil1"></div><div id="eye"></div><div id="eye1"></div>
+    <div id="top0"></div><div id="top1"></div><div id="top2"></div><div id="top3"></div><div id="top4"></div>
+    <div id="st0"></div><div id="st1"></div><div id="st2"></div><div id="st3"></div><div id="st4"></div><div id="st5"></div>
+    <div id="an1"></div><div id="an2"></div><div id="an3"></div><div id="an4"></div><div id="an5"></div><div id="an6"></div>
+    <div id="an7"></div><div id="an8"></div><div id="an9"></div><div id="an10"></div><div id="an11"></div><div id="an12"></div>
+    <div id="an13"></div><div id="an14"></div><div id="an15"></div><div id="an16"></div><div id="an17"></div><div id="an18"></div>
+  </div>
+  <div id="shadow"></div>
+</div>`;
+        } else if (num === 2) { // Idea - Astronaut
+            animContainer.innerHTML = `
+<div class="box-of-star1"><div class="star star-position1"></div><div class="star star-position2"></div><div class="star star-position3"></div><div class="star star-position4"></div><div class="star star-position5"></div><div class="star star-position6"></div><div class="star star-position7"></div></div>
+<div class="box-of-star2"><div class="star star-position1"></div><div class="star star-position2"></div><div class="star star-position3"></div><div class="star star-position4"></div><div class="star star-position5"></div><div class="star star-position6"></div><div class="star star-position7"></div></div>
+<div class="box-of-star3"><div class="star star-position1"></div><div class="star star-position2"></div><div class="star star-position3"></div><div class="star star-position4"></div><div class="star star-position5"></div><div class="star star-position6"></div><div class="star star-position7"></div></div>
+<div class="box-of-star4"><div class="star star-position1"></div><div class="star star-position2"></div><div class="star star-position3"></div><div class="star star-position4"></div><div class="star star-position5"></div><div class="star star-position6"></div><div class="star star-position7"></div></div>
+<div data-js="astro" class="astronaut" style="transform: scale(0.6); top: 5%; left: 10%; opacity: 0.9;">
+    <div class="head"></div><div class="arm arm-left"></div><div class="arm arm-right"></div>
+    <div class="body"><div class="panel"></div></div><div class="leg leg-left"></div><div class="leg leg-right"></div><div class="schoolbag"></div>
+</div>`;
+        } else if (num === 4) { // Resultado - Loader with text
+            let descText = phase.description ? phase.description.trim() : "Generating";
+            if (!descText) descText = "Generating";
+            
+            // Generate animated letters
+            let letters = descText.split('').map((char, index) => {
+                let delay = 0.1 + (index * 0.1);
+                return `<span class="loader-letter" style="animation-delay: ${delay}s">${char === ' ' ? '&nbsp;' : char}</span>`;
+            }).join('');
+            
+            descEl.innerHTML = `
+<div class="loader-wrapper mx-auto my-8">
+  ${letters}
+  <div class="loader"></div>
+</div>`;
+        }
+    };
+
+    if (animate) {
+        container.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        container.style.transform = 'translateY(15px)';
+        container.style.opacity = '0';
+        
+        setTimeout(() => {
+            updateDOM();
+            container.style.transform = 'translateX(-20px)';
+            // Force reflow to apply the reset instantly before animating again
+            void container.offsetWidth;
+            container.style.transform = 'translateY(0) translateX(0)';
+            container.style.opacity = '1';
+        }, 300);
+    } else {
+        updateDOM();
+    }
 }
 
-// Admin Methods
+// Admin Methods (Silent & Non-intrusive UI)
 async function createNewIdea() {
-    if(!confirm("¿Crear un nuevo ciclo de idea? Esto iniciará las 4 fases en la Base de Datos.")) return;
     try {
         const res = await fetch('/api/ideas', { method: 'POST' });
         const d = await res.json();
         if (d.success) {
             currentPhaseView = 1;
-            await loadDitoxIdea();
-        } else {
-            alert("Error al crear idea: " + (d.error || 'Desconocido'));
+            await loadDitoxIdea(true);
         }
-    } catch(e) { alert("Error de conexión: " + e.message); }
+    } catch(e) { console.error("Error al crear idea:", e); }
 }
 
-async function archiveIdea() {
-    const name = prompt("Ingrese el nombre del ciclo para guardarlo en el historial:");
-    if (!name || !name.trim()) return;
-    try {
-        const res = await fetch('/api/ideas/archive', { 
+function archiveIdea() {
+    if (typeof customPrompt === 'function') {
+        customPrompt("Ingrese el nombre del ciclo para guardarlo en el historial:", async (name) => {
+            if (!name || !name.trim()) return;
+            try {
+                const res = await fetch('/api/ideas/archive', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ cycleName: name.trim() })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    await loadDitoxIdea(true);
+                }
+            } catch(e) { console.error("Error al archivar ciclo:", e); }
+        });
+    } else {
+        const name = prompt("Ingrese el nombre del ciclo:");
+        if (!name || !name.trim()) return;
+        fetch('/api/ideas/archive', { 
             method: 'POST', 
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ cycleName: name.trim() })
-        });
-        const d = await res.json();
-        if (d.success) {
-            alert("✅ Ciclo de idea guardado en el historial con éxito.");
-            await loadDitoxIdea();
-        } else {
-            alert("Error al guardar ciclo.");
-        }
-    } catch(e) { alert("Error: " + e.message); }
+        }).then(() => loadDitoxIdea(true));
+    }
 }
 
 async function deleteIdea() {
-    if(!confirm("¿Seguro que deseas eliminar el ciclo de idea actual de la Base de Datos?")) return;
     try {
         await fetch('/api/ideas', { method: 'DELETE' });
-        await loadDitoxIdea();
-    } catch(e) { alert("Error: " + e.message); }
+        await loadDitoxIdea(true);
+    } catch(e) { console.error("Error eliminando idea:", e); }
 }
 
 async function updateIdeaIndicators() {
@@ -1508,16 +1599,20 @@ async function updateIdeaIndicators() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ direction: dir, timeframe: tf })
         });
-        await loadDitoxIdea();
-    } catch(e) { alert("Error actualizando indicadores: " + e.message); }
+        await loadDitoxIdea(true);
+    } catch(e) { console.error("Error actualizando indicadores:", e); }
 }
 
 async function saveCurrentPhase() {
     const desc = document.getElementById('edit-phase-desc').value;
+    const saveBtn = document.querySelector('button[onclick="saveCurrentPhase()"]');
+    const originalText = saveBtn ? saveBtn.innerHTML : 'Guardar Fase';
+
     const payload = { description: desc };
     if (window.pendingPhaseImage) payload.image = window.pendingPhaseImage;
     
     try {
+        if (saveBtn) saveBtn.innerHTML = '⏳ Guardando...';
         const res = await fetch(`/api/ideas/phase/${currentPhaseView}`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
@@ -1526,10 +1621,24 @@ async function saveCurrentPhase() {
         const d = await res.json();
         if(d.success) {
             window.pendingPhaseImage = null;
-            await loadDitoxIdea();
-            alert(`✅ Fase ${currentPhaseView} guardada correctamente.`);
-        } else { alert("Error al guardar fase."); }
-    } catch(e) { alert("Error: " + e.message); }
+            await loadDitoxIdea(true);
+            if (saveBtn) {
+                saveBtn.innerHTML = `✅ ¡Fase ${currentPhaseView} Guardada!`;
+                saveBtn.classList.remove('from-green-500', 'to-emerald-600');
+                saveBtn.classList.add('from-emerald-400', 'to-teal-500');
+                setTimeout(() => {
+                    saveBtn.innerHTML = originalText;
+                    saveBtn.classList.remove('from-emerald-400', 'to-teal-500');
+                    saveBtn.classList.add('from-green-500', 'to-emerald-600');
+                }, 2000);
+            }
+        } else {
+            if (saveBtn) saveBtn.innerHTML = originalText;
+        }
+    } catch(e) { 
+        console.error("Error al guardar fase:", e); 
+        if (saveBtn) saveBtn.innerHTML = originalText;
+    }
 }
 
 // Global Image Paste Handler for Admin
@@ -1559,8 +1668,8 @@ document.addEventListener('paste', e => {
 
 document.addEventListener('DOMContentLoaded', () => {
     // Load ideas on startup
-    loadDitoxIdea();
+    loadDitoxIdea(true);
     
-    // Call periodically to keep it synced in real-time
-    setInterval(loadDitoxIdea, 10000); 
+    // Periodic silent refresh (only updates if user is not editing)
+    setInterval(() => loadDitoxIdea(false), 12000); 
 });

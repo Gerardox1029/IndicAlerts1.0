@@ -1050,9 +1050,9 @@ app.get('/', (req, res) => {
                             <p id="phase-last-updated" class="absolute top-4 left-6 text-[10px] font-mono text-gray-400 uppercase tracking-widest bg-black/40 px-3 py-1 rounded-full"></p>
                             
                             <!-- Content Area -->
-                            <div class="w-full flex flex-col items-center mt-4">
-                                <img id="phase-image" src="" alt="Fase Imagen" class="max-w-full rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] hidden object-contain transition-opacity duration-300 border border-white/5" style="max-height: 60vh;">
-                                <div id="phase-desc" class="mt-8 text-lg text-gray-200 w-full max-w-4xl text-center leading-relaxed"></div>
+                            <div class="w-full flex flex-col md:flex-row items-center justify-center gap-8 mt-8 relative z-10">
+                                <img id="phase-image" src="" alt="Fase Imagen" class="w-full md:w-1/2 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] hidden object-contain transition-opacity duration-300 border border-white/5" style="max-height: 50vh;">
+                                <div id="phase-desc" class="mt-4 md:mt-0 text-lg text-gray-200 w-full md:w-1/2 text-left leading-relaxed"></div>
                             </div>
                             
                             <!-- Editor (Admin Only) -->
