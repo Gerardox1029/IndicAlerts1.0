@@ -1317,3 +1317,222 @@ function deleteTrader(id) {
     })
     .catch(e => console.error('Error eliminando trader:', e));
 }
+
+// ==========================================
+// IDEAS DITOX LOGIC
+// ==========================================
+
+let currentIdeaData = null;
+let currentPhaseView = 1;
+
+async function loadDitoxIdea() {
+    try {
+        const res = await fetch('/api/ideas/active');
+        const data = await res.json();
+        
+        const adminMode = localStorage.getItem('ditoxMode') === 'true';
+        
+        if (data.empty || !data.phases) {
+            document.getElementById('idea-empty').classList.remove('hidden');
+            document.getElementById('idea-active').classList.add('hidden');
+            document.getElementById('idea-indicators').classList.add('hidden');
+        } else {
+            currentIdeaData = data;
+            document.getElementById('idea-empty').classList.add('hidden');
+            document.getElementById('idea-active').classList.remove('hidden');
+            document.getElementById('idea-indicators').classList.remove('hidden');
+            
+            // Update Indicators
+            document.getElementById('idea-dir').textContent = data.direction;
+            document.getElementById('idea-dir').className = data.direction === 'Long' ? 'text-2xl font-black text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]' : 'text-2xl font-black text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.5)]';
+            document.getElementById('idea-tf').textContent = data.timeframe;
+            
+            if (adminMode) {
+                document.getElementById('edit-idea-dir').value = data.direction;
+                document.getElementById('edit-idea-tf').value = data.timeframe;
+            }
+
+            // Update Spheres
+            let highestPhase = 1;
+            data.phases.forEach(p => {
+                const sphere = document.getElementById(`sphere-${p.phaseNumber}`);
+                if (p.lastUpdated) highestPhase = Math.max(highestPhase, p.phaseNumber);
+                
+                // Opacity logic: public sees only active/updated phases. Admin sees all? No, public sees phase 1, and others if they have been updated.
+                if (!adminMode && !p.lastUpdated && p.phaseNumber > 1) {
+                    sphere.classList.add('opacity-30');
+                    sphere.style.pointerEvents = 'none'; // not clickable if not active
+                } else {
+                    sphere.classList.remove('opacity-30');
+                    sphere.style.pointerEvents = 'auto';
+                }
+            });
+            
+            showPhase(currentPhaseView);
+        }
+        
+        // Load History
+        const histRes = await fetch('/api/ideas/history');
+        const histData = await histRes.json();
+        if (histData && histData.length > 0) {
+            document.getElementById('ideas-history-section').classList.remove('hidden');
+            const tbody = document.getElementById('ideas-history-body');
+            tbody.innerHTML = histData.map(h => `
+                <tr class="border-b border-gray-700/50 hover:bg-white/5 transition-colors">
+                    <td class="py-3 px-4 text-xs font-mono text-gray-400">${new Date(h.archivedAt).toLocaleDateString()}</td>
+                    <td class="py-3 px-4 font-bold text-blue-300">${h.cycleName}</td>
+                    <td class="py-3 px-4 text-xs font-bold ${h.direction === 'Long' ? 'text-green-400' : 'text-red-400'}">${h.direction}</td>
+                    <td class="py-3 px-4 text-sm text-gray-300">${h.phases[h.phases.length-1].description || 'Sin descripción'}</td>
+                </tr>
+            `).join('');
+        }
+        
+    } catch(e) { console.error("Error loading ideas:", e); }
+}
+
+function showPhase(num) {
+    currentPhaseView = num;
+    if (!currentIdeaData) return;
+    
+    // UI active state
+    for(let i=1; i<=4; i++) {
+        const sp = document.getElementById(`sphere-${i}`);
+        if(i === num) sp.classList.add('scale-110', 'brightness-125');
+        else sp.classList.remove('scale-110', 'brightness-125');
+    }
+    
+    const phase = currentIdeaData.phases.find(p => p.phaseNumber === num);
+    if (!phase) return;
+    
+    const adminMode = localStorage.getItem('ditoxMode') === 'true';
+    
+    const imgEl = document.getElementById('phase-image');
+    const descEl = document.getElementById('phase-desc');
+    const timeEl = document.getElementById('phase-last-updated');
+    
+    imgEl.classList.add('hidden');
+    descEl.innerHTML = '';
+    
+    // Simple transition
+    const container = document.getElementById('phase-content-container');
+    container.style.opacity = 0;
+    
+    setTimeout(() => {
+        if (phase.image) {
+            imgEl.src = phase.image;
+            imgEl.classList.remove('hidden');
+        }
+        if (phase.description) {
+            descEl.innerHTML = phase.description.replace(/\n/g, '<br>');
+        } else {
+            descEl.innerHTML = '<span class="text-gray-500 italic">No hay información en esta fase aún.</span>';
+        }
+        
+        if (phase.lastUpdated) {
+            timeEl.textContent = 'Actualizado: ' + new Date(phase.lastUpdated).toLocaleString();
+        } else {
+            timeEl.textContent = 'Sin empezar';
+        }
+        
+        if (adminMode) {
+            document.getElementById('edit-phase-desc').value = phase.description || '';
+            // Reset paste area
+            document.getElementById('paste-area').innerHTML = phase.image ? '<span class="text-green-400">✅ Imagen actual cargada. Pegar para reemplazar.</span>' : '<span class="text-lg">Pegar imagen aquí...</span>';
+            // Store pending image if any
+            window.pendingPhaseImage = null; 
+        }
+        
+        container.style.opacity = 1;
+    }, 200);
+}
+
+// Admin Methods
+async function createNewIdea() {
+    if(!confirm("¿Crear un nuevo ciclo de idea? Esto archivará el actual si existe.")) return;
+    try {
+        await fetch('/api/ideas', { method: 'POST' });
+        currentPhaseView = 1;
+        loadDitoxIdea();
+    } catch(e) { alert("Error: " + e.message); }
+}
+
+async function archiveIdea() {
+    const name = prompt("Ingrese nombre para guardar el ciclo en el historial:");
+    if (!name) return;
+    try {
+        await fetch('/api/ideas/archive', { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ cycleName: name })
+        });
+        loadDitoxIdea();
+    } catch(e) { alert("Error: " + e.message); }
+}
+
+async function deleteIdea() {
+    if(!confirm("¿Eliminar idea actual por completo? No irá al historial.")) return;
+    try {
+        await fetch('/api/ideas', { method: 'DELETE' });
+        loadDitoxIdea();
+    } catch(e) { alert("Error: " + e.message); }
+}
+
+async function updateIdeaIndicators() {
+    const dir = document.getElementById('edit-idea-dir').value;
+    const tf = document.getElementById('edit-idea-tf').value;
+    try {
+        await fetch(`/api/ideas/phase/1`, { // phase doesn't matter for this
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ direction: dir, timeframe: tf })
+        });
+        loadDitoxIdea();
+    } catch(e) { alert("Error: " + e.message); }
+}
+
+async function saveCurrentPhase() {
+    const desc = document.getElementById('edit-phase-desc').value;
+    const payload = { description: desc };
+    if (window.pendingPhaseImage) payload.image = window.pendingPhaseImage;
+    
+    try {
+        const res = await fetch(`/api/ideas/phase/${currentPhaseView}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const d = await res.json();
+        if(d.success) {
+            window.pendingPhaseImage = null;
+            loadDitoxIdea();
+        } else { alert("Error al guardar fase."); }
+    } catch(e) { alert("Error: " + e.message); }
+}
+
+// Image Paste Logic
+document.addEventListener('DOMContentLoaded', () => {
+    const pasteArea = document.getElementById('paste-area');
+    if (pasteArea) {
+        pasteArea.addEventListener('paste', e => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let index in items) {
+                const item = items[index];
+                if (item.kind === 'file') {
+                    const blob = item.getAsFile();
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        window.pendingPhaseImage = event.target.result;
+                        pasteArea.innerHTML = '<span class="text-green-400 font-bold">✅ Imagen capturada! (Aún no guardada)</span>';
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            }
+        });
+    }
+    
+    // Load ideas on startup
+    loadDitoxIdea();
+    
+    // Call periodically to keep it synced
+    setInterval(loadDitoxIdea, 15000); 
+});

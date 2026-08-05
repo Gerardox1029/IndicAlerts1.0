@@ -11,17 +11,17 @@ function getAuraLevel(hits, misses) {
     if (total === 0) return { winRate: 0, level: 'B' };
     const wr = (hits / total) * 100;
     let level;
-    if (wr >= 80)      level = 'AAA';
+    if (wr >= 80) level = 'AAA';
     else if (wr >= 75) level = 'AA';
     else if (wr >= 70) level = 'A';
-    else               level = 'B';
+    else level = 'B';
     return { winRate: parseFloat(wr.toFixed(1)), level };
 }
 
 // ── Emoji de estado ────────────────────────────────────────────────────────────
 function stateEmoji(state) {
-    if (state === 'alcista')  return '🟢';
-    if (state === 'bajista')  return '🔴';
+    if (state === 'alcista') return '🟢';
+    if (state === 'bajista') return '🔴';
     return '⚪';
 }
 
@@ -93,7 +93,7 @@ function setupTraderCommands(bot) {
             const auraDisplay = `${level} (${winRate}% de acierto)`;
 
             let respuesta =
-`🧠 <b>Trader: ${trader.name}</b>
+                `🧠 <b>Trader: ${trader.name}</b>
 
 ✨ <b>Aura:</b> ${auraDisplay}
 📌 <b>Estado:</b> ${stateLabel} ${emoji}
@@ -109,8 +109,13 @@ function setupTraderCommands(bot) {
                 message_id: messageId,
                 parse_mode: 'HTML',
                 reply_markup: query.message.reply_markup // Mantiene los botones
-            }).catch(async () => {
-                // Si no se puede editar, enviar mensaje nuevo
+            }).catch(async (err) => {
+                // Si el mensaje no cambió, no hacemos nada (evita duplicar)
+                if (err.response && err.response.body && err.response.body.description.includes('message is not modified')) {
+                    return;
+                }
+
+                // Si fue otro tipo de error real, enviamos un mensaje nuevo como respaldo
                 await bot.sendMessage(chatId, respuesta, { parse_mode: 'HTML' });
             });
 

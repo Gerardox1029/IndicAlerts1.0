@@ -67,6 +67,26 @@ const YoutubeChannelSchema = new mongoose.Schema({
 });
 const YoutubeChannel = mongoose.model('YoutubeChannel', YoutubeChannelSchema);
 
+// ── Ditox Idea Schema ────────────────────────────────────────────────────────
+const DitoxIdeaPhaseSchema = new mongoose.Schema({
+    phaseNumber: { type: Number, required: true }, // 1 to 4
+    image: { type: String, default: '' }, // Base64 or URL
+    description: { type: String, default: '' },
+    lastUpdated: { type: Date, default: null }
+});
+
+const DitoxIdeaSchema = new mongoose.Schema({
+    status: { type: String, enum: ['active', 'archived'], default: 'active' },
+    cycleName: { type: String, default: '' },
+    direction: { type: String, enum: ['Long', 'Short'], default: 'Long' },
+    timeframe: { type: String, default: '4h' },
+    phases: [DitoxIdeaPhaseSchema],
+    createdAt: { type: Date, default: Date.now },
+    archivedAt: { type: Date }
+});
+
+const DitoxIdea = mongoose.model('DitoxIdea', DitoxIdeaSchema);
+
 // ── Trader Schema ─────────────────────────────────────────────────────────────
 // hits/misses arrancan en 7/3 para que el win-rate base sea del 70%.
 // Así si el primer resultado real es un fallo: 7/(7+3+1)=63% (pierde rango A).
@@ -178,5 +198,6 @@ module.exports = {
     BitacoraTrade,
     TargetGroup,
     YoutubeChannel,
-    Trader
+    Trader,
+    DitoxIdea
 };

@@ -10,7 +10,7 @@ const {
     ADMIN_PASSWORD
 } = require('./config');
 const state = require('./services/state');
-const { saveUserToMongo, User, TargetGroup, YoutubeChannel, Trader } = require('./db/mongo');
+const { saveUserToMongo, User, TargetGroup, YoutubeChannel, Trader, DitoxIdea } = require('./db/mongo');
 const { getBot, enviarTelegram, simulateSignalEffect } = require('./bot');
 const { checkConsolidatedAlerts } = require('./engine/loop');
 
@@ -566,6 +566,80 @@ app.post('/api/bitacora/update', async (req, res) => {
     }
 });
 
+// --- Ditox Ideas API ---
+app.get('/api/ideas/active', async (req, res) => {
+    try {
+        const idea = await DitoxIdea.findOne({ status: 'active' });
+        res.json(idea || { empty: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/ideas', async (req, res) => {
+    try {
+        await DitoxIdea.updateMany({ status: 'active' }, { status: 'archived', cycleName: 'Archivado Automático' });
+        const newIdea = new DitoxIdea({
+            phases: [
+                { phaseNumber: 1, description: '', image: '', lastUpdated: new Date() },
+                { phaseNumber: 2, description: '', image: '', lastUpdated: null },
+                { phaseNumber: 3, description: '', image: '', lastUpdated: null },
+                { phaseNumber: 4, description: '', image: '', lastUpdated: null }
+            ]
+        });
+        await newIdea.save();
+        res.json({ success: true, idea: newIdea });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/ideas/phase/:number', async (req, res) => {
+    try {
+        const num = parseInt(req.params.number);
+        const { image, description, direction, timeframe } = req.body;
+        const idea = await DitoxIdea.findOne({ status: 'active' });
+        if (!idea) return res.status(404).json({ success: false });
+
+        const phase = idea.phases.find(p => p.phaseNumber === num);
+        if (phase) {
+            if (image !== undefined) phase.image = image;
+            if (description !== undefined) phase.description = description;
+            phase.lastUpdated = new Date();
+        }
+        if (direction) idea.direction = direction;
+        if (timeframe) idea.timeframe = timeframe;
+        
+        await idea.save();
+        res.json({ success: true, idea });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/ideas/archive', async (req, res) => {
+    try {
+        const { cycleName } = req.body;
+        const idea = await DitoxIdea.findOne({ status: 'active' });
+        if (idea) {
+            idea.status = 'archived';
+            idea.cycleName = cycleName || 'Ciclo ' + new Date().toLocaleDateString();
+            idea.archivedAt = new Date();
+            idea.phases.forEach(p => p.image = ''); // Strip images to save space
+            await idea.save();
+        }
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/ideas', async (req, res) => {
+    try {
+        await DitoxIdea.deleteMany({ status: 'active' });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/ideas/history', async (req, res) => {
+    try {
+        const ideas = await DitoxIdea.find({ status: 'archived' }).sort({ archivedAt: -1 }).limit(20);
+        res.json(ideas);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Daily Sync Bitacora Trades (Constantly every day)
 setInterval(async () => {
     try {
@@ -690,6 +764,7 @@ app.get('/', (req, res) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IndicAlerts | Ditox OS</title>
     <link rel="icon" type="image/jpeg" href="/icono_ditox10.jpeg">
+    <link rel="stylesheet" href="/ditox.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script>
@@ -892,6 +967,124 @@ app.get('/', (req, res) => {
 
         <!-- SECTION: DASHBOARD -->
         <div id="section-dashboard" class="space-y-12">
+            <!-- Ideas Ditox Section -->
+            <section class="mb-16 bg-gray-800/30 backdrop-blur-lg rounded-3xl border border-gray-700/50 relative overflow-hidden" id="ideas-ditox-section">
+                <!-- Stars Background from ditox.css -->
+                <div class="container absolute inset-0 z-0 pointer-events-none" id="ditox-bg" style="background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);">
+                    <div id="stars"></div>
+                    <div id="stars:after"></div>
+                </div>
+                
+                <div class="relative z-10 p-8">
+                    <div class="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
+                        <h2 class="text-2xl font-bold text-white uppercase tracking-widest drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">Ideas Ditox</h2>
+                        <div class="ditox-admin hidden flex gap-3">
+                            <button onclick="createNewIdea()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-2 px-6 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.3)] transition-all transform hover:scale-105">+ Agregar idea</button>
+                            <button onclick="archiveIdea()" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold py-2 px-6 rounded-xl shadow-[0_0_15px_rgba(147,51,234,0.3)] transition-all transform hover:scale-105">Guardar ciclo</button>
+                            <button onclick="deleteIdea()" class="bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-xl transition-colors">Eliminar</button>
+                        </div>
+                    </div>
+
+                    <!-- Indicators (Constant Component) -->
+                    <div id="idea-indicators" class="hidden absolute top-24 right-8 bg-gray-900/60 backdrop-blur-md p-5 rounded-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] z-20 hover:bg-gray-900/80 transition-colors">
+                        <div class="text-center">
+                            <p class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Dirección</p>
+                            <div id="idea-dir" class="text-2xl font-black text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]">LONG</div>
+                        </div>
+                        <div class="text-center mt-3 pt-3 border-t border-white/10">
+                            <p class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Temporalidad</p>
+                            <div id="idea-tf" class="text-lg font-bold text-blue-300 drop-shadow-[0_0_10px_rgba(147,197,253,0.5)]">4h</div>
+                        </div>
+                        <div class="ditox-admin hidden mt-3 pt-3 border-t border-white/10 space-y-2">
+                            <select id="edit-idea-dir" class="bg-gray-800/80 text-white text-xs w-full p-2 rounded-lg border border-gray-600 outline-none focus:border-blue-500" onchange="updateIdeaIndicators()">
+                                <option value="Long">Long</option><option value="Short">Short</option>
+                            </select>
+                            <select id="edit-idea-tf" class="bg-gray-800/80 text-white text-xs w-full p-2 rounded-lg border border-gray-600 outline-none focus:border-blue-500" onchange="updateIdeaIndicators()">
+                                <option value="1h">1h</option><option value="2h">2h</option><option value="3h">3h</option><option value="4h">4h</option><option value="1D">1D</option><option value="1 Semana">1 Semana</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="idea-empty" class="text-center py-24 bg-gray-900/40 rounded-3xl border border-gray-700/30 backdrop-blur-sm">
+                        <div class="text-6xl mb-4 opacity-50">🛸</div>
+                        <h3 class="text-2xl font-light text-gray-400">Sin ideas en gestión actualmente</h3>
+                    </div>
+
+                    <!-- Active Idea Content -->
+                    <div id="idea-active" class="hidden">
+                        <!-- Navigation spheres -->
+                        <div class="flex justify-center gap-4 md:gap-12 mb-12" id="phases-nav">
+                            <div class="phase-sphere cursor-pointer flex flex-col items-center transition-all duration-300 hover:scale-110" onclick="showPhase(1)" id="sphere-1">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.5)] border-2 border-white/20 relative overflow-hidden group">
+                                   <div class="absolute inset-0 bg-white/20 animate-pulse-slow"></div>
+                                   <span class="text-2xl font-bold text-white relative z-10 drop-shadow-lg">1</span>
+                                </div>
+                                <p class="text-center mt-3 text-sm text-gray-300 font-bold uppercase tracking-wider">Sospecha</p>
+                            </div>
+                            <div class="phase-sphere cursor-pointer opacity-30 flex flex-col items-center transition-all duration-300 hover:scale-110" onclick="showPhase(2)" id="sphere-2">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.3)] border-2 border-white/20">
+                                   <span class="text-2xl font-bold text-white drop-shadow-lg">2</span>
+                                </div>
+                                <p class="text-center mt-3 text-sm text-gray-300 font-bold uppercase tracking-wider">Idea</p>
+                            </div>
+                            <div class="phase-sphere cursor-pointer opacity-30 flex flex-col items-center transition-all duration-300 hover:scale-110" onclick="showPhase(3)" id="sphere-3">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.3)] border-2 border-white/20">
+                                   <span class="text-2xl font-bold text-white drop-shadow-lg">3</span>
+                                </div>
+                                <p class="text-center mt-3 text-sm text-gray-300 font-bold uppercase tracking-wider">Actualización</p>
+                            </div>
+                            <div class="phase-sphere cursor-pointer opacity-30 flex flex-col items-center transition-all duration-300 hover:scale-110" onclick="showPhase(4)" id="sphere-4">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center shadow-[0_0_20px_rgba(236,72,153,0.3)] border-2 border-white/20">
+                                   <span class="text-2xl font-bold text-white drop-shadow-lg">4</span>
+                                </div>
+                                <p class="text-center mt-3 text-sm text-gray-300 font-bold uppercase tracking-wider">Resultado</p>
+                            </div>
+                        </div>
+
+                        <!-- Phase Content Container -->
+                        <div id="phase-content-container" class="bg-gray-900/70 p-8 rounded-3xl border border-white/10 min-h-[400px] flex flex-col items-center justify-center relative transition-all duration-500 shadow-2xl backdrop-blur-xl">
+                            <p id="phase-last-updated" class="absolute top-4 left-6 text-[10px] font-mono text-gray-400 uppercase tracking-widest bg-black/40 px-3 py-1 rounded-full"></p>
+                            
+                            <!-- Content Area -->
+                            <div class="w-full flex flex-col items-center mt-4">
+                                <img id="phase-image" src="" alt="Fase Imagen" class="max-w-full rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] hidden object-contain transition-opacity duration-300 border border-white/5" style="max-height: 60vh;">
+                                <div id="phase-desc" class="mt-8 text-lg text-gray-200 w-full max-w-4xl text-center leading-relaxed"></div>
+                            </div>
+                            
+                            <!-- Editor (Admin Only) -->
+                            <div class="ditox-admin hidden w-full flex flex-col items-center mt-12 border-t border-white/10 pt-8">
+                                <p class="text-sm text-blue-400 mb-3 font-semibold uppercase tracking-wider"><span class="mr-2">📸</span>Haz clic en el área y presiona <b>Ctrl+V</b> para pegar captura</p>
+                                <div id="paste-area" tabindex="0" class="w-full h-32 bg-gray-900/50 border-2 border-dashed border-blue-500/50 hover:border-blue-400 rounded-2xl flex items-center justify-center text-gray-500 focus:outline-none focus:border-blue-400 focus:bg-blue-900/20 mb-6 transition-all cursor-pointer shadow-inner">
+                                    <span class="text-lg">Pegar imagen aquí...</span>
+                                </div>
+                                <textarea id="edit-phase-desc" class="w-full bg-gray-900/80 text-white p-4 rounded-2xl mb-6 border border-gray-700 focus:border-blue-500 focus:outline-none shadow-inner" rows="4" placeholder="Descripción de la fase (soporta HTML básico: <b>negritas</b>, <i>cursivas</i> y emojis)"></textarea>
+                                <button onclick="saveCurrentPhase()" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-bold py-3 px-12 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all transform hover:-translate-y-1 text-lg">Guardar Fase</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- History Section -->
+                    <div id="ideas-history-section" class="mt-12 hidden">
+                        <h3 class="text-lg font-bold text-gray-400 mb-4 border-b border-gray-700 pb-2 uppercase tracking-widest">Historial de Ideas</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-left">
+                                <thead>
+                                    <tr class="border-b border-gray-700/50 text-gray-400 text-xs uppercase tracking-wider">
+                                        <th class="py-3 px-4">Fecha</th>
+                                        <th class="py-3 px-4">Ciclo</th>
+                                        <th class="py-3 px-4">Dirección</th>
+                                        <th class="py-3 px-4">Última Descripción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ideas-history-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Mercado Summary Section -->
             <section class="mb-16 bg-gray-800/30 backdrop-blur-lg rounded-3xl border border-gray-700/50 p-8">
                 <h2 class="text-2xl font-bold text-white mb-8 border-b border-gray-700 pb-4 uppercase">Resumen del Mercado</h2>
