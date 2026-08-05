@@ -1464,7 +1464,16 @@ function showPhase(num, animate = true) {
         }
         
         if (adminMode) {
-            document.getElementById('edit-phase-desc').value = phase.description || '';
+            const descInput = document.getElementById('edit-phase-desc');
+            descInput.value = phase.description || '';
+            
+            // Adjust placeholder for phase 4 to clarify that it edits the loader text
+            if (num === 4) {
+                descInput.placeholder = "Texto de carga (Ej: Generando, Calculando...)";
+            } else {
+                descInput.placeholder = "Descripción de la fase (soporta HTML básico: <b>negritas</b>, <i>cursivas</i> y emojis)";
+            }
+            
             const pasteArea = document.getElementById('paste-area');
             if (pasteArea) {
                 pasteArea.innerHTML = phase.image 
@@ -1504,7 +1513,7 @@ function showPhase(num, animate = true) {
 <div class="box-of-star2"><div class="star star-position1"></div><div class="star star-position2"></div><div class="star star-position3"></div><div class="star star-position4"></div><div class="star star-position5"></div><div class="star star-position6"></div><div class="star star-position7"></div></div>
 <div class="box-of-star3"><div class="star star-position1"></div><div class="star star-position2"></div><div class="star star-position3"></div><div class="star star-position4"></div><div class="star star-position5"></div><div class="star star-position6"></div><div class="star star-position7"></div></div>
 <div class="box-of-star4"><div class="star star-position1"></div><div class="star star-position2"></div><div class="star star-position3"></div><div class="star star-position4"></div><div class="star star-position5"></div><div class="star star-position6"></div><div class="star star-position7"></div></div>
-<div data-js="astro" class="astronaut" style="transform: scale(0.6); top: 5%; left: 10%; opacity: 0.9;">
+<div data-js="astro" class="astronaut" style="transform: scale(0.6); top: 5%; right: 10%; opacity: 0.9;">
     <div class="head"></div><div class="arm arm-left"></div><div class="arm arm-right"></div>
     <div class="body"><div class="panel"></div></div><div class="leg leg-left"></div><div class="leg leg-right"></div><div class="schoolbag"></div>
 </div>`;
