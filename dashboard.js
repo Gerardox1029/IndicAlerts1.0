@@ -1332,7 +1332,17 @@ async function loadDitoxIdea() {
         
         const adminMode = localStorage.getItem('ditoxMode') === 'true';
         
+        // Ensure all admin controls are correctly shown/hidden based on ditoxMode
+        document.querySelectorAll('.ditox-admin').forEach(el => {
+            if (adminMode) {
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        });
+        
         if (data.empty || !data.phases) {
+            currentIdeaData = null;
             document.getElementById('idea-empty').classList.remove('hidden');
             document.getElementById('idea-active').classList.add('hidden');
             document.getElementById('idea-indicators').classList.add('hidden');
@@ -1348,20 +1358,19 @@ async function loadDitoxIdea() {
             document.getElementById('idea-tf').textContent = data.timeframe;
             
             if (adminMode) {
-                document.getElementById('edit-idea-dir').value = data.direction;
-                document.getElementById('edit-idea-tf').value = data.timeframe;
+                document.getElementById('edit-idea-dir').value = data.direction || 'Long';
+                document.getElementById('edit-idea-tf').value = data.timeframe || '4h';
             }
 
             // Update Spheres
-            let highestPhase = 1;
             data.phases.forEach(p => {
                 const sphere = document.getElementById(`sphere-${p.phaseNumber}`);
-                if (p.lastUpdated) highestPhase = Math.max(highestPhase, p.phaseNumber);
+                if (!sphere) return;
                 
-                // Opacity logic: public sees only active/updated phases. Admin sees all? No, public sees phase 1, and others if they have been updated.
+                // Opacity logic: public sees Phase 1 always, and others only if updated. Admin sees all 4 spheres active.
                 if (!adminMode && !p.lastUpdated && p.phaseNumber > 1) {
                     sphere.classList.add('opacity-30');
-                    sphere.style.pointerEvents = 'none'; // not clickable if not active
+                    sphere.style.pointerEvents = 'none';
                 } else {
                     sphere.classList.remove('opacity-30');
                     sphere.style.pointerEvents = 'auto';
@@ -1382,7 +1391,7 @@ async function loadDitoxIdea() {
                     <td class="py-3 px-4 text-xs font-mono text-gray-400">${new Date(h.archivedAt).toLocaleDateString()}</td>
                     <td class="py-3 px-4 font-bold text-blue-300">${h.cycleName}</td>
                     <td class="py-3 px-4 text-xs font-bold ${h.direction === 'Long' ? 'text-green-400' : 'text-red-400'}">${h.direction}</td>
-                    <td class="py-3 px-4 text-sm text-gray-300">${h.phases[h.phases.length-1].description || 'Sin descripción'}</td>
+                    <td class="py-3 px-4 text-sm text-gray-300">${(h.phases && h.phases[h.phases.length-1] && h.phases[h.phases.length-1].description) ? h.phases[h.phases.length-1].description : 'Sin descripción'}</td>
                 </tr>
             `).join('');
         }
@@ -1392,13 +1401,15 @@ async function loadDitoxIdea() {
 
 function showPhase(num) {
     currentPhaseView = num;
-    if (!currentIdeaData) return;
+    if (!currentIdeaData || !currentIdeaData.phases) return;
     
-    // UI active state
+    // Highlight selected sphere
     for(let i=1; i<=4; i++) {
         const sp = document.getElementById(`sphere-${i}`);
-        if(i === num) sp.classList.add('scale-110', 'brightness-125');
-        else sp.classList.remove('scale-110', 'brightness-125');
+        if (sp) {
+            if(i === num) sp.classList.add('scale-110', 'brightness-125', 'ring-4', 'ring-blue-500/50');
+            else sp.classList.remove('scale-110', 'brightness-125', 'ring-4', 'ring-blue-500/50');
+        }
     }
     
     const phase = currentIdeaData.phases.find(p => p.phaseNumber === num);
@@ -1413,7 +1424,6 @@ function showPhase(num) {
     imgEl.classList.add('hidden');
     descEl.innerHTML = '';
     
-    // Simple transition
     const container = document.getElementById('phase-content-container');
     container.style.opacity = 0;
     
@@ -1425,55 +1435,67 @@ function showPhase(num) {
         if (phase.description) {
             descEl.innerHTML = phase.description.replace(/\n/g, '<br>');
         } else {
-            descEl.innerHTML = '<span class="text-gray-500 italic">No hay información en esta fase aún.</span>';
+            descEl.innerHTML = '<span class="text-gray-500 italic">No hay información cargada para esta fase.</span>';
         }
         
         if (phase.lastUpdated) {
-            timeEl.textContent = 'Actualizado: ' + new Date(phase.lastUpdated).toLocaleString();
+            timeEl.textContent = 'Última Actualización: ' + new Date(phase.lastUpdated).toLocaleString();
         } else {
-            timeEl.textContent = 'Sin empezar';
+            timeEl.textContent = 'Fase sin actualizar';
         }
         
         if (adminMode) {
             document.getElementById('edit-phase-desc').value = phase.description || '';
-            // Reset paste area
-            document.getElementById('paste-area').innerHTML = phase.image ? '<span class="text-green-400">✅ Imagen actual cargada. Pegar para reemplazar.</span>' : '<span class="text-lg">Pegar imagen aquí...</span>';
-            // Store pending image if any
+            const pasteArea = document.getElementById('paste-area');
+            if (pasteArea) {
+                pasteArea.innerHTML = phase.image ? '<span class="text-green-400 font-bold">✅ Imagen actual cargada. Presiona Ctrl+V para reemplazar.</span>' : '<span class="text-lg text-gray-400">Haz clic aquí y presiona <b>Ctrl + V</b> para pegar la captura</span>';
+            }
             window.pendingPhaseImage = null; 
         }
         
         container.style.opacity = 1;
-    }, 200);
+    }, 150);
 }
 
 // Admin Methods
 async function createNewIdea() {
-    if(!confirm("¿Crear un nuevo ciclo de idea? Esto archivará el actual si existe.")) return;
+    if(!confirm("¿Crear un nuevo ciclo de idea? Esto iniciará las 4 fases en la Base de Datos.")) return;
     try {
-        await fetch('/api/ideas', { method: 'POST' });
-        currentPhaseView = 1;
-        loadDitoxIdea();
-    } catch(e) { alert("Error: " + e.message); }
+        const res = await fetch('/api/ideas', { method: 'POST' });
+        const d = await res.json();
+        if (d.success) {
+            currentPhaseView = 1;
+            await loadDitoxIdea();
+        } else {
+            alert("Error al crear idea: " + (d.error || 'Desconocido'));
+        }
+    } catch(e) { alert("Error de conexión: " + e.message); }
 }
 
 async function archiveIdea() {
-    const name = prompt("Ingrese nombre para guardar el ciclo en el historial:");
-    if (!name) return;
+    const name = prompt("Ingrese el nombre del ciclo para guardarlo en el historial:");
+    if (!name || !name.trim()) return;
     try {
-        await fetch('/api/ideas/archive', { 
+        const res = await fetch('/api/ideas/archive', { 
             method: 'POST', 
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ cycleName: name })
+            body: JSON.stringify({ cycleName: name.trim() })
         });
-        loadDitoxIdea();
+        const d = await res.json();
+        if (d.success) {
+            alert("✅ Ciclo de idea guardado en el historial con éxito.");
+            await loadDitoxIdea();
+        } else {
+            alert("Error al guardar ciclo.");
+        }
     } catch(e) { alert("Error: " + e.message); }
 }
 
 async function deleteIdea() {
-    if(!confirm("¿Eliminar idea actual por completo? No irá al historial.")) return;
+    if(!confirm("¿Seguro que deseas eliminar el ciclo de idea actual de la Base de Datos?")) return;
     try {
         await fetch('/api/ideas', { method: 'DELETE' });
-        loadDitoxIdea();
+        await loadDitoxIdea();
     } catch(e) { alert("Error: " + e.message); }
 }
 
@@ -1481,13 +1503,13 @@ async function updateIdeaIndicators() {
     const dir = document.getElementById('edit-idea-dir').value;
     const tf = document.getElementById('edit-idea-tf').value;
     try {
-        await fetch(`/api/ideas/phase/1`, { // phase doesn't matter for this
+        await fetch(`/api/ideas/phase/1`, { 
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ direction: dir, timeframe: tf })
         });
-        loadDitoxIdea();
-    } catch(e) { alert("Error: " + e.message); }
+        await loadDitoxIdea();
+    } catch(e) { alert("Error actualizando indicadores: " + e.message); }
 }
 
 async function saveCurrentPhase() {
@@ -1504,35 +1526,41 @@ async function saveCurrentPhase() {
         const d = await res.json();
         if(d.success) {
             window.pendingPhaseImage = null;
-            loadDitoxIdea();
+            await loadDitoxIdea();
+            alert(`✅ Fase ${currentPhaseView} guardada correctamente.`);
         } else { alert("Error al guardar fase."); }
     } catch(e) { alert("Error: " + e.message); }
 }
 
-// Image Paste Logic
-document.addEventListener('DOMContentLoaded', () => {
-    const pasteArea = document.getElementById('paste-area');
-    if (pasteArea) {
-        pasteArea.addEventListener('paste', e => {
-            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-            for (let index in items) {
-                const item = items[index];
-                if (item.kind === 'file') {
-                    const blob = item.getAsFile();
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        window.pendingPhaseImage = event.target.result;
-                        pasteArea.innerHTML = '<span class="text-green-400 font-bold">✅ Imagen capturada! (Aún no guardada)</span>';
-                    };
-                    reader.readAsDataURL(blob);
+// Global Image Paste Handler for Admin
+document.addEventListener('paste', e => {
+    const adminMode = localStorage.getItem('ditoxMode') === 'true';
+    if (!adminMode) return;
+
+    const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+    if (!items) return;
+
+    for (let index in items) {
+        const item = items[index];
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+            const blob = item.getAsFile();
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                window.pendingPhaseImage = event.target.result;
+                const pasteArea = document.getElementById('paste-area');
+                if (pasteArea) {
+                    pasteArea.innerHTML = '<span class="text-green-400 font-bold text-lg">✅ Captura pegada correctamente (Haz clic en "Guardar Fase")</span>';
                 }
-            }
-        });
+            };
+            reader.readAsDataURL(blob);
+        }
     }
-    
+});
+
+document.addEventListener('DOMContentLoaded', () => {
     // Load ideas on startup
     loadDitoxIdea();
     
-    // Call periodically to keep it synced
-    setInterval(loadDitoxIdea, 15000); 
+    // Call periodically to keep it synced in real-time
+    setInterval(loadDitoxIdea, 10000); 
 });

@@ -1009,6 +1009,9 @@ app.get('/', (req, res) => {
                     <div id="idea-empty" class="text-center py-24 bg-gray-900/40 rounded-3xl border border-gray-700/30 backdrop-blur-sm">
                         <div class="text-6xl mb-4 opacity-50">🛸</div>
                         <h3 class="text-2xl font-light text-gray-400">Sin ideas en gestión actualmente</h3>
+                        <div class="ditox-admin hidden mt-6">
+                            <button onclick="createNewIdea()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 px-8 rounded-xl shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-all transform hover:scale-105">+ Agregar nueva idea</button>
+                        </div>
                     </div>
 
                     <!-- Active Idea Content -->
