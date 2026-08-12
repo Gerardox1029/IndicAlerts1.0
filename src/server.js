@@ -640,6 +640,20 @@ app.get('/api/ideas/history', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.delete('/api/ideas/history/:id', async (req, res) => {
+    try {
+        await DitoxIdea.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/bitacora/:id', async (req, res) => {
+    try {
+        await BitacoraTrade.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Daily Sync Bitacora Trades (Constantly every day)
 setInterval(async () => {
     try {
@@ -880,6 +894,10 @@ app.get('/', (req, res) => {
             pointer-events: none;
         }
     </style>
+    <!-- Boxicons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="text-gray-200 min-h-screen p-4 md:p-8">
     <div class="stars-layer"></div>
@@ -927,43 +945,65 @@ app.get('/', (req, res) => {
             </div>
         </header>
 
-        <!-- Ditox Nav Bar -->
-        <nav id="ditox-navbar" class="hidden mb-8 bg-gray-800/60 backdrop-blur-xl rounded-2xl border border-purple-500/30 p-2 flex justify-center gap-2 shadow-2xl">
-            <button onclick="showSection('dashboard')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
-                🚀 Panel del Bot
-            </button>
-            <button onclick="showSection('bitacora')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
-                📔 Bitácora Ditox
-            </button>
-            <button onclick="showSection('history')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
-                📜 Historial de Señales
-            </button>
-            <button onclick="showSection('users')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
-                👥 Panel de Usuarios
-            </button>
-            <button onclick="showSection('broadcast')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
-                📢 Broadcast a Grupos
-            </button>
-            <button onclick="showSection('youtube')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
-                📺 Canales YouTube
-            </button>
-            <button onclick="showSection('traders')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
-                🧠 Traders
-            </button>
-        </nav>
-
-
-        <nav class="hidden mb-8 bg-gray-800/60 backdrop-blur-xl rounded-2xl border border-purple-500/30 p-2 flex justify-center gap-2 shadow-2xl">
-            <button onclick="showSection('scalper')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
-                🚀 Scalper Mode
-            </button>
-            <button onclick="showSection('dashboard')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
-                📜 Intraday Mode
-            </button>
-            <button onclick="showSection('swingtrader')" class="nav-btn px-6 py-2 rounded-xl text-sm font-bold text-gray-300 hover:bg-purple-900/30 hover:text-white transition-all">
-                👥 Swing trader Mode
-            </button>
-        </nav>
+        <!-- Sidebar Navigation -->
+        <div class="sidebar hidden" id="ditox-navbar">
+            <div class="logo-details">
+                <i class='bx bxs-rocket icon'></i>
+                <div class="logo_name text-xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">DITOX</div>
+                <i class='bx bx-menu' id="btn"></i>
+            </div>
+            <ul class="nav-list mt-8">
+                <li>
+                    <button onclick="showSection('dashboard')" class="nav-btn">
+                        <i class='bx bx-grid-alt'></i>
+                        <span class="links_name">Panel del Bot</span>
+                    </button>
+                    <span class="tooltip">Panel del Bot</span>
+                </li>
+                <li>
+                    <button onclick="showSection('bitacora')" class="nav-btn">
+                        <i class='bx bx-book-bookmark'></i>
+                        <span class="links_name">Bitácora</span>
+                    </button>
+                    <span class="tooltip">Bitácora Ditox</span>
+                </li>
+                <li>
+                    <button onclick="showSection('history')" class="nav-btn">
+                        <i class='bx bx-history'></i>
+                        <span class="links_name">Historial</span>
+                    </button>
+                    <span class="tooltip">Historial de Señales</span>
+                </li>
+                <li>
+                    <button onclick="showSection('users')" class="nav-btn">
+                        <i class='bx bx-user'></i>
+                        <span class="links_name">Usuarios</span>
+                    </button>
+                    <span class="tooltip">Panel de Usuarios</span>
+                </li>
+                <li>
+                    <button onclick="showSection('broadcast')" class="nav-btn">
+                        <i class='bx bx-broadcast'></i>
+                        <span class="links_name">Broadcast</span>
+                    </button>
+                    <span class="tooltip">Broadcast a Grupos</span>
+                </li>
+                <li>
+                    <button onclick="showSection('youtube')" class="nav-btn">
+                        <i class='bx bxl-youtube'></i>
+                        <span class="links_name">YouTube</span>
+                    </button>
+                    <span class="tooltip">Canales YouTube</span>
+                </li>
+                <li>
+                    <button onclick="showSection('traders')" class="nav-btn">
+                        <i class='bx bx-brain'></i>
+                        <span class="links_name">Traders</span>
+                    </button>
+                    <span class="tooltip">Traders</span>
+                </li>
+            </ul>
+        </div>
 
         <!-- SECTION: DASHBOARD -->
         <div id="section-dashboard" class="space-y-12">
@@ -1077,7 +1117,8 @@ app.get('/', (req, res) => {
                                         <th class="py-3 px-4">Fecha</th>
                                         <th class="py-3 px-4">Ciclo</th>
                                         <th class="py-3 px-4">Dirección</th>
-                                        <th class="py-3 px-4">Última Descripción</th>
+                                        <th class="py-3 px-4">Fases</th>
+                                        <th class="py-3 px-4">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="ideas-history-body">
@@ -1172,22 +1213,22 @@ app.get('/', (req, res) => {
                         <div class="flex transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)]" id="carousel-track">
                             <!-- Slides -->
                             <div class="min-w-full flex justify-center items-center bg-gray-900/50 p-2">
-                                <img src="/src/assets/tip1.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-300" onclick="openTipModal('/src/assets/tip1.png')">
+                                <img src="/src/assets/tip1.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg">
                             </div>
                             <div class="min-w-full flex justify-center items-center bg-gray-900/50 p-2">
-                                <img src="/src/assets/tip2.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-300" onclick="openTipModal('/src/assets/tip2.png')">
+                                <img src="/src/assets/tip2.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg">
                             </div>
                             <div class="min-w-full flex justify-center items-center bg-gray-900/50 p-2">
-                                <img src="/src/assets/tip3.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-300" onclick="openTipModal('/src/assets/tip3.png')">
+                                <img src="/src/assets/tip3.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg">
                             </div>
                             <div class="min-w-full flex justify-center items-center bg-gray-900/50 p-2">
-                                <img src="/src/assets/tip4.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-300" onclick="openTipModal('/src/assets/tip4.png')">
+                                <img src="/src/assets/tip4.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg">
                             </div>
                             <div class="min-w-full flex justify-center items-center bg-gray-900/50 p-2">
-                                <img src="/src/assets/tip5.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-300" onclick="openTipModal('/src/assets/tip5.png')">
+                                <img src="/src/assets/tip5.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg">
                             </div>
                             <div class="min-w-full flex justify-center items-center bg-gray-900/50 p-2">
-                                <img src="/src/assets/tip6.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg cursor-pointer hover:scale-[1.02] transition-transform duration-300" onclick="openTipModal('/src/assets/tip6.png')">
+                                <img src="/src/assets/tip6.png" class="w-full h-auto object-contain max-h-[500px] rounded-xl shadow-lg">
                             </div>
                         </div>
 
@@ -1242,6 +1283,34 @@ app.get('/', (req, res) => {
 
         <!-- SECTION: BITACORA DITOX (Admin Only) -->
         <div id="section-bitacora" class="hidden">
+            <!-- RENTABILIDAD DITOX CHART -->
+            <div class="bg-gray-800/40 backdrop-blur-xl rounded-3xl border border-purple-500/30 overflow-hidden shadow-2xl p-6 mb-8 relative">
+                <h2 class="text-2xl font-bold text-white flex items-center gap-2 mb-4">
+                    <span>📈</span> Rentabilidad DItox
+                </h2>
+                <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                    <div class="flex flex-col">
+                        <label class="text-xs text-gray-400 uppercase tracking-widest mb-1">Tasa Mensual (%)</label>
+                        <input type="number" id="tasa-mensual" value="17.5" step="0.1" class="bg-gray-900 border border-gray-700 rounded-lg p-2 text-white font-mono w-24 focus:border-purple-500 focus:outline-none">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs text-gray-400 uppercase tracking-widest mb-1">Rango (Meses)</label>
+                        <select id="rango-meses" class="bg-gray-900 border border-gray-700 rounded-lg p-2 text-white font-mono focus:border-purple-500 focus:outline-none">
+                            <option value="6">6 Meses</option>
+                            <option value="12">12 Meses</option>
+                            <option value="18">18 Meses</option>
+                            <option value="24">24 Meses</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col text-right ml-auto">
+                        <span class="text-xs text-gray-400 uppercase tracking-widest">Proyección Final</span>
+                        <span id="proyeccion-final" class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-300">0.00 USDT</span>
+                    </div>
+                </div>
+                <div class="rentabilidad-chart-container">
+                    <canvas id="rentabilidadChart"></canvas>
+                </div>
+            </div>
             <div class="bg-gray-800/40 backdrop-blur-xl rounded-3xl border border-purple-500/30 overflow-hidden shadow-2xl p-6">
                 <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <div>

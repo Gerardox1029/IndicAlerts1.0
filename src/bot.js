@@ -410,11 +410,19 @@ function setupListeners() {
 
         const reportMsg = `📊 REPORTE GENERAL\n\n📸 <b>Estado Dominante:</b> ${marketSummary.dominantState}\n${marketSummary.terrainNote !== "Indecisión (No operar) ⚖️" ? `` : ''}\n🪐 ${macroText}\n\nBy Ditox🔮\n\n🕒 ${getPeruTime()} (PE)`;
 
-        await bot.sendMessage(chatId, reportMsg, { message_thread_id: threadId, parse_mode: 'HTML' });
+        await bot.sendMessage(chatId, reportMsg, { message_thread_id: threadId, parse_mode: 'HTML' }).then(msg => {
+            setTimeout(() => {
+                bot.deleteMessage(chatId, msg.message_id).catch(() => { });
+            }, 10000);
+        });
 
         if (state.stickyDatabase.length > 0) {
             const randomSticker = state.stickyDatabase[Math.floor(Math.random() * state.stickyDatabase.length)];
-            bot.sendSticker(chatId, randomSticker, { message_thread_id: threadId }).catch(console.error);
+            bot.sendSticker(chatId, randomSticker, { message_thread_id: threadId }).then(msg => {
+                setTimeout(() => {
+                    bot.deleteMessage(chatId, msg.message_id).catch(() => { });
+                }, 10000);
+            }).catch(console.error);
         }
     });
 
@@ -443,7 +451,12 @@ function setupListeners() {
         saveUser(chatId, username);
         const threadId = msg.message_thread_id;
 
-        bot.sendMessage(chatId, `🔍 Analizando ${symbol}...`, { message_thread_id: threadId });
+        bot.sendMessage(chatId, `🔍 Analizando ${symbol}...`, { message_thread_id: threadId }).then(msg => {
+            // Borra el mensaje de resultado tras 0.25 segundos (250 ms)
+            setTimeout(() => {
+                bot.deleteMessage(chatId, msg.message_id).catch(() => { });
+            }, 250);
+        });
 
         const interval = '2h';
         const marketData = await fetchData(symbol, interval, 100);
@@ -507,10 +520,20 @@ By Ditox🔮
                     message_thread_id: threadId,
                     parse_mode: 'HTML',
                     reply_markup: { inline_keyboard }
+                }).then(msg => {
+                    // Borra el mensaje de resultado tras 10 segundos (10000 ms)
+                    setTimeout(() => {
+                        bot.deleteMessage(chatId, msg.message_id).catch(() => { });
+                    }, 10000);
                 });
+
                 if (state.stickyDatabase.length > 0) {
                     const randomSticker = state.stickyDatabase[Math.floor(Math.random() * state.stickyDatabase.length)];
-                    bot.sendSticker(chatId, randomSticker, { message_thread_id: threadId }).catch(console.error);
+                    bot.sendSticker(chatId, randomSticker, { message_thread_id: threadId }).then(msg => {
+                        setTimeout(() => {
+                            bot.deleteMessage(chatId, msg.message_id).catch(() => { });
+                        }, 10000);
+                    }).catch(console.error);
                 }
             } else {
                 bot.sendMessage(chatId, `❌ Error calculando indicadores para ${symbol}`, { message_thread_id: threadId });
@@ -543,7 +566,7 @@ By Ditox🔮
                 // Borra el mensaje tras 3 segundos (3000 ms)
                 setTimeout(() => {
                     bot.deleteMessage(chatId, msg.message_id).catch(() => { });
-                }, 3000);
+                }, 250);
             });
 
         const marketData = await fetchData(symbol, '2h', 100);
@@ -694,7 +717,12 @@ By Ditox🔮
             const terrain = data.startsWith('tickS') ? 'SHORT' : 'LONG';
             const symbol = data.split('_')[1];
 
-            bot.sendMessage(chatId, `⏳ Calculando TICK para ${symbol} en terreno de ${terrain}...`, { message_thread_id: threadId });
+            bot.sendMessage(chatId, `⏳ Calculando TICK para ${symbol} en terreno de ${terrain}...`, { message_thread_id: threadId }).then(msg => {
+                // Borra el mensaje tras 3 segundos (3000 ms)
+                setTimeout(() => {
+                    bot.deleteMessage(chatId, msg.message_id).catch(() => { });
+                }, 250);
+            });
 
             const marketData = await fetchData(symbol, '2h', 100);
             if (!marketData) {
@@ -707,7 +735,12 @@ By Ditox🔮
             const tickValue = calcularTICK(marketData.highs, marketData.lows, currentPrice, terrain);
 
             if (tickValue) {
-                bot.sendMessage(chatId, `🎯 <b>Posible TICK (${terrain}):</b> $${tickValue}\n💎 <b>Par:</b> ${symbol} (2h)`, { message_thread_id: threadId, parse_mode: 'HTML' });
+                bot.sendMessage(chatId, `🎯 <b>Posible TICK (${terrain}):</b> $${tickValue}\n💎 <b>Par:</b> ${symbol} (2h)`, { message_thread_id: threadId, parse_mode: 'HTML' }).then(msg => {
+                    // Borra el mensaje de resultado tras 10 segundos (10000 ms)
+                    setTimeout(() => {
+                        bot.deleteMessage(chatId, msg.message_id).catch(() => { });
+                    }, 10000);
+                });
             } else {
                 bot.sendMessage(chatId, `❌ No se pudo calcular el TICK para ${symbol}`, { message_thread_id: threadId });
             }

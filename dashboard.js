@@ -672,7 +672,8 @@ function renderBitacora(trades) {
             </td>
             <td class="py-4 px-4 text-center">
                 <div class="text-3xl ${confColor}">${conf}%</div>
-                <div class="text-[9px] text-gray-500 uppercase mt-1">Confianza</div>
+                <div class="text-[9px] text-gray-500 uppercase mt-1 mb-2">Confianza</div>
+                <button onclick="deleteBitacoraTrade('${t._id}')" class="text-red-400 hover:text-red-300 transition-colors" title="Eliminar operación">🗑️</button>
             </td>
         </tr>
         `;
@@ -1406,14 +1407,29 @@ async function loadDitoxIdea(forceRender = false) {
             document.getElementById('ideas-history-section').classList.remove('hidden');
             const tbody = document.getElementById('ideas-history-body');
             if (tbody) {
-                tbody.innerHTML = histData.map(h => `
+                tbody.innerHTML = histData.map(h => {
+                    let ballsHtml = '<div class="phases-container">';
+                    for (let i = 1; i <= 4; i++) {
+                        const phase = h.phases ? h.phases.find(p => p.phaseNumber === i) : null;
+                        if (phase && phase.description) {
+                            const descEncoded = encodeURIComponent(phase.description);
+                            ballsHtml += `<div class="phase-ball phase-green" onmouseenter="showPhaseModal(this, '${descEncoded}', ${i})" onmouseleave="hidePhaseModal()"></div>`;
+                        } else {
+                            ballsHtml += `<div class="phase-ball phase-gray" title="Idea descontinuada"></div>`;
+                        }
+                    }
+                    ballsHtml += '</div>';
+                    
+                    return `
                     <tr class="border-b border-gray-700/50 hover:bg-white/5 transition-colors">
                         <td class="py-3 px-4 text-xs font-mono text-gray-400">${new Date(h.archivedAt).toLocaleDateString()}</td>
                         <td class="py-3 px-4 font-bold text-blue-300">${h.cycleName}</td>
                         <td class="py-3 px-4 text-xs font-bold ${h.direction === 'Long' ? 'text-green-400' : 'text-red-400'}">${h.direction}</td>
-                        <td class="py-3 px-4 text-sm text-gray-300">${(h.phases && h.phases[h.phases.length-1] && h.phases[h.phases.length-1].description) ? h.phases[h.phases.length-1].description : 'Sin descripción'}</td>
+                        <td class="py-3 px-4">${ballsHtml}</td>
+                        <td class="py-3 px-4"><button onclick="deleteIdeaHistory('${h._id}')" class="text-red-400 hover:text-red-300 transition-colors">🗑️</button></td>
                     </tr>
-                `).join('');
+                `;
+                }).join('');
             }
         }
         
@@ -1681,4 +1697,188 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Periodic silent refresh (only updates if user is not editing)
     setInterval(() => loadDitoxIdea(false), 12000); 
+
+    // --- SIDEBAR LOGIC ---
+    const sidebar = document.querySelector(".sidebar");
+    const closeBtn = document.querySelector("#btn");
+
+    if (sidebar && closeBtn) {
+        closeBtn.addEventListener("click", () => {
+            sidebar.classList.toggle("open");
+            menuBtnChange();
+        });
+    }
+
+    function menuBtnChange() {
+        if (sidebar.classList.contains("open")) {
+            closeBtn.classList.replace("bx-menu", "bx-menu-alt-right");
+        } else {
+            closeBtn.classList.replace("bx-menu-alt-right", "bx-menu");
+        }
+    }
+
+    // --- RENTABILIDAD CHART INITIALIZATION ---
+    initRentabilidadChart();
 });
+
+// --- RENTABILIDAD LOGIC ---
+let rentabilidadChart = null;
+
+function initRentabilidadChart() {
+    const ctx = document.getElementById('rentabilidadChart');
+    if (!ctx) return;
+
+    const tasaInput = document.getElementById('tasa-mensual');
+    const rangoSelect = document.getElementById('rango-meses');
+
+    const updateChart = () => {
+        const tasa = parseFloat(tasaInput.value) / 100 || 0.175;
+        const meses = parseInt(rangoSelect.value) || 6;
+        const capitalInicial = 1000; // Base capital
+        
+        let labels = [];
+        let data = [];
+        let capital = capitalInicial;
+
+        for (let i = 0; i <= meses; i++) {
+            labels.push(`Mes ${i}`);
+            data.push(capital);
+            capital += capital * tasa;
+        }
+
+        const proyeccionFinal = data[data.length - 1];
+        document.getElementById('proyeccion-final').innerText = `${proyeccionFinal.toFixed(2)} USDT`;
+
+        if (rentabilidadChart) {
+            rentabilidadChart.destroy();
+        }
+
+        // We split datasets to make index 0-1 solid, and 1+ dashed
+        const solidData = data.map((v, i) => i <= 1 ? v : null);
+        const dashedData = data.map((v, i) => i >= 1 ? v : null);
+
+        rentabilidadChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Real (Mes Actual)',
+                        data: solidData,
+                        borderColor: '#ffffff',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#10B981',
+                        pointRadius: 5,
+                        fill: false,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Proyección Futura',
+                        data: dashedData,
+                        borderColor: 'rgba(255, 255, 255, 0.4)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointBackgroundColor: '#8B5CF6',
+                        pointRadius: 4,
+                        fill: false,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `$${context.parsed.y.toFixed(2)} USD`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#9CA3AF' }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#9CA3AF', callback: (val) => '$' + val }
+                    }
+                }
+            }
+        });
+    };
+
+    tasaInput.addEventListener('input', updateChart);
+    rangoSelect.addEventListener('change', updateChart);
+    
+    // Initial draw
+    updateChart();
+}
+
+// --- HISTORIAL DE IDEAS MODAL & DELETE ---
+
+function showPhaseModal(element, encodedDesc, phaseNum) {
+    let modal = document.getElementById('dynamic-phase-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'dynamic-phase-modal';
+        modal.className = 'phase-modal';
+        modal.innerHTML = `
+            <div class="phase-modal-header">Fase <span id="modal-phase-num"></span></div>
+            <div class="phase-modal-content" id="modal-phase-content"></div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    document.getElementById('modal-phase-num').innerText = phaseNum;
+    
+    // Decode and parse line breaks safely
+    let desc = decodeURIComponent(encodedDesc);
+    desc = desc.replace(/\\n/g, '<br>'); // Simple fallback
+    document.getElementById('modal-phase-content').innerHTML = desc; // Uses innerHTML to render bold, italic, emojis
+    
+    modal.classList.add('active');
+}
+
+function hidePhaseModal() {
+    const modal = document.getElementById('dynamic-phase-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+async function deleteIdeaHistory(id) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este ciclo del historial?')) return;
+    try {
+        const res = await fetch(`/api/ideas/history/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            loadIdeasHistory(); // Reload history
+        } else {
+            alert('Error al eliminar');
+        }
+    } catch(e) { console.error("Delete history error:", e); }
+}
+
+// Ensure loadIdeasHistory exists globally or reuse loadDitoxIdea's fetch
+async function loadIdeasHistory() {
+    // Just re-call loadDitoxIdea, which also loads history
+    loadDitoxIdea(false);
+}
+
+// --- BITACORA DELETE ---
+async function deleteBitacoraTrade(id) {
+    if (!confirm('¿Eliminar operación de la bitácora?')) return;
+    try {
+        const res = await fetch(`/api/bitacora/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            loadBitacoraTrades();
+        } else {
+            alert('Error al eliminar');
+        }
+    } catch(e) { console.error("Delete bitacora error:", e); }
+}

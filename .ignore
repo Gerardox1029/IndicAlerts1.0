@@ -1,0 +1,29 @@
+# Carpetas pesadas y dependencias
+node_modules/
+.git/
+src/api/
+src/assets/
+src/db/
+src/engine/
+src/services/
+src/utils/
+
+# Scripts secundarios y archivos auxiliares
+src/userbot_logic.py
+src/userbot_setup.py
+src/disable_dep_warning.js
+src/config.js
+check_symbol.js
+clean_index.js
+get_chat_id.js
+
+# Archivos de sesión, basura y temporales
+*.session
+*.json
+*.txt
+*.zip
+*.jpeg
+desktop.ini
+Dockerfile
+Procfile
+package-lock.json
