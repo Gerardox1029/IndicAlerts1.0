@@ -537,11 +537,19 @@ By Ditox🔮
             return;
         }
 
-        bot.sendMessage(chatId, `⏳ Calculando TICK para ${symbol} en terreno de ${terrain}...`, { message_thread_id: threadId });
+        // Enviamos el mensaje y capturamos la promesa
+        bot.sendMessage(chatId, `⏳ Calculando TICK para ${symbol} en terreno de ${terrain}...`, { message_thread_id: threadId })
+            .then(msg => {
+                // Borra el mensaje tras 3 segundos (3000 ms)
+                setTimeout(() => {
+                    bot.deleteMessage(chatId, msg.message_id).catch(() => { });
+                }, 500);
+            });
 
         const marketData = await fetchData(symbol, '2h', 100);
         if (!marketData) {
-            bot.sendMessage(chatId, `❌ Error obteniendo datos para ${symbol}`, { message_thread_id: threadId });
+            bot.sendMessage(chatId, `❌ Error obteniendo datos para ${symbol}`, { message_thread_id: threadId })
+                .then(msg => setTimeout(() => bot.deleteMessage(chatId, msg.message_id).catch(() => { }), 5000));
             return;
         }
 
@@ -549,73 +557,81 @@ By Ditox🔮
         const tickValue = calcularTICK(marketData.highs, marketData.lows, currentPrice, terrain);
 
         if (tickValue) {
-            bot.sendMessage(chatId, `🎯 <b>Posible TICK (${terrain}):</b> $${tickValue}\n💎 <b>Par:</b> ${symbol} (2h)`, { message_thread_id: threadId, parse_mode: 'HTML', auto_delete_time: 3000 });
+            bot.sendMessage(chatId, `🎯 <b>Posible TICK (${terrain}):</b> $${tickValue}\n💎 <b>Par:</b> ${symbol} (2h)`, {
+                message_thread_id: threadId,
+                parse_mode: 'HTML'
+            }).then(msg => {
+                // Borra el mensaje de resultado tras 10 segundos (10000 ms)
+                setTimeout(() => {
+                    bot.deleteMessage(chatId, msg.message_id).catch(() => { });
+                }, 10000);
+            });
         } else {
-            bot.sendMessage(chatId, `❌ No se pudo calcular el TICK para ${symbol}`, { message_thread_id: threadId });
-        }
-    });
-
-    // /tick
-    bot.onText(/^\/tick$/i, async (msg) => {
-        const chatId = msg.chat.id;
-        const threadId = msg.message_thread_id;
-        const sendOptions = threadId ? { message_thread_id: threadId } : {};
-
-        const assetsPath = path.join(__dirname, 'assets');
-        const buenTickPath = path.join(assetsPath, 'buen_tick.png');
-        const malTickPath = path.join(assetsPath, 'mal_tick.png');
-
-        if (fs.existsSync(buenTickPath)) {
-            await bot.sendPhoto(chatId, fs.createReadStream(buenTickPath), {
-                caption: '✅',
-                ...sendOptions
-            }).catch(e => console.error("Error enviando buen_tick:", e.message));
-        } else {
-            console.error("buen_tick.png no encontrado en:", buenTickPath);
+            bot.sendMessage(chatId, `❌ No se pudo calcular el TICK para ${symbol}`, { message_thread_id: threadId })
+                .then(msg => setTimeout(() => bot.deleteMessage(chatId, msg.message_id).catch(() => { }), 5000));
         }
 
-        if (fs.existsSync(malTickPath)) {
-            await bot.sendPhoto(chatId, fs.createReadStream(malTickPath), {
-                caption: '❌',
-                ...sendOptions
-            }).catch(e => console.error("Error enviando mal_tick:", e.message));
-        } else {
-            console.error("mal_tick.png no encontrado en:", malTickPath);
-        }
-    });
+        // /tick
+        bot.onText(/^\/tick$/i, async (msg) => {
+            const chatId = msg.chat.id;
+            const threadId = msg.message_thread_id;
+            const sendOptions = threadId ? { message_thread_id: threadId } : {};
 
-    // /simulate_triple
-    bot.onText(/\/simulate_triple_(long|short)/i, async (msg, match) => {
-        const type = match[1].toUpperCase();
-        bot.sendMessage(msg.chat.id, `🧪 Iniciando simulación de 3 terrenos de ${type}...`);
+            const assetsPath = path.join(__dirname, 'assets');
+            const buenTickPath = path.join(assetsPath, 'buen_tick.png');
+            const malTickPath = path.join(assetsPath, 'mal_tick.png');
 
-        const simSymbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];
-        for (const s of simSymbols) {
-            await simulateSignalEffect(s, type, { trackTerrain: true });
-        }
+            if (fs.existsSync(buenTickPath)) {
+                await bot.sendPhoto(chatId, fs.createReadStream(buenTickPath), {
+                    caption: '✅',
+                    ...sendOptions
+                }).catch(e => console.error("Error enviando buen_tick:", e.message));
+            } else {
+                console.error("buen_tick.png no encontrado en:", buenTickPath);
+            }
 
-        // Need checkConsolidatedAlerts from loop
-        const { checkConsolidatedAlerts } = require('./engine/loop');
-        await checkConsolidatedAlerts();
+            if (fs.existsSync(malTickPath)) {
+                await bot.sendPhoto(chatId, fs.createReadStream(malTickPath), {
+                    caption: '❌',
+                    ...sendOptions
+                }).catch(e => console.error("Error enviando mal_tick:", e.message));
+            } else {
+                console.error("mal_tick.png no encontrado en:", malTickPath);
+            }
+        });
 
-        bot.sendMessage(msg.chat.id, `✅ Simulación de ${type} ejecutada.`);
-    });
+        // /simulate_triple
+        bot.onText(/\/simulate_triple_(long|short)/i, async (msg, match) => {
+            const type = match[1].toUpperCase();
+            bot.sendMessage(msg.chat.id, `🧪 Iniciando simulación de 3 terrenos de ${type}...`);
 
-    // /simulate_long_terrain
-    bot.onText(/\/simulate_(long|short)_(terrain|euphoria)/i, async (msg, match) => {
-        const type = `${match[2].toUpperCase()}_${match[1].toUpperCase()}`;
-        await simulateSignalEffect('BTCUSDT', type, { updatePanel: true });
-        bot.sendMessage(msg.chat.id, `✅ Panel simulado como ${type}.`);
+            const simSymbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];
+            for (const s of simSymbols) {
+                await simulateSignalEffect(s, type, { trackTerrain: true });
+            }
+
+            // Need checkConsolidatedAlerts from loop
+            const { checkConsolidatedAlerts } = require('./engine/loop');
+            await checkConsolidatedAlerts();
+
+            bot.sendMessage(msg.chat.id, `✅ Simulación de ${type} ejecutada.`);
+        });
+
+        // /simulate_long_terrain
+        bot.onText(/\/simulate_(long|short)_(terrain|euphoria)/i, async (msg, match) => {
+            const type = `${match[2].toUpperCase()}_${match[1].toUpperCase()}`;
+            await simulateSignalEffect('BTCUSDT', type, { updatePanel: true });
+            bot.sendMessage(msg.chat.id, `✅ Panel simulado como ${type}.`);
 
 
-    });
+        });
 
 
-    bot.onText(/\/ayuda/i, async (msg) => {
-        const chatId = msg.chat.id;
-        const threadId = msg.message_thread_id;
+        bot.onText(/\/ayuda/i, async (msg) => {
+            const chatId = msg.chat.id;
+            const threadId = msg.message_thread_id;
 
-        const comandos = `
+            const comandos = `
 <b>🤖 GUÍA DE COMANDOS DITOX</b>
 
 🔎 <b><u>ANÁLISIS Y ENTRADAS</u></b>
@@ -639,114 +655,114 @@ By Ditox🔮
 <i>¡Mantente siempre alerta con IndicAlerts!</i> 🚀💎
 `;
 
-        await bot.sendMessage(chatId, comandos, { message_thread_id: threadId, parse_mode: 'HTML' });
-    });
+            await bot.sendMessage(chatId, comandos, { message_thread_id: threadId, parse_mode: 'HTML' });
+        });
 
-    const psicotradingEmojis = ['🧘', '💡', '🌬️', '🌳', '📏', '📊'];
-    for (let i = 1; i <= 6; i++) {
-        bot.onText(new RegExp(`\\/tip${i}`, 'i'), async (msg) => {
+        const psicotradingEmojis = ['🧘', '💡', '🌬️', '🌳', '📏', '📊'];
+        for (let i = 1; i <= 6; i++) {
+            bot.onText(new RegExp(`\\/tip${i}`, 'i'), async (msg) => {
+                const chatId = msg.chat.id;
+                const threadId = msg.message_thread_id;
+                const assetPath = path.join(__dirname, 'assets', `tip${i}.png`);
+                if (fs.existsSync(assetPath)) {
+                    const randomEmoji = psicotradingEmojis[Math.floor(Math.random() * psicotradingEmojis.length)];
+                    await bot.sendPhoto(chatId, fs.createReadStream(assetPath), {
+                        caption: randomEmoji,
+                        message_thread_id: threadId
+                    });
+                } else {
+                    bot.sendMessage(chatId, `❌ Tip ${i} no encontrado.`, { message_thread_id: threadId });
+                }
+            });
+        }
+
+        bot.onText(/\/tips/i, async (msg) => {
             const chatId = msg.chat.id;
             const threadId = msg.message_thread_id;
-            const assetPath = path.join(__dirname, 'assets', `tip${i}.png`);
-            if (fs.existsSync(assetPath)) {
-                const randomEmoji = psicotradingEmojis[Math.floor(Math.random() * psicotradingEmojis.length)];
-                await bot.sendPhoto(chatId, fs.createReadStream(assetPath), {
-                    caption: randomEmoji,
-                    message_thread_id: threadId
-                });
-            } else {
-                bot.sendMessage(chatId, `❌ Tip ${i} no encontrado.`, { message_thread_id: threadId });
+            const text = `🧘 <b>La psicología es el 80% del trading.</b>\n\nEvitar el <b>TILT</b> <i>(pérdida del control emocional)</i> es la clave absoluta para alcanzar la rentabilidad consistente. Un trader tranquilo sigue su plan; un trader alterado regala su dinero al mercado. 💡📊`;
+            bot.sendMessage(chatId, text, { parse_mode: 'HTML', message_thread_id: threadId });
+        });
+
+        bot.on('callback_query', async (query) => {
+            const data = query.data;
+            const chatId = query.message.chat.id;
+            const threadId = query.message.message_thread_id;
+
+            if (data.startsWith('tick')) {
+                const terrain = data.startsWith('tickS') ? 'SHORT' : 'LONG';
+                const symbol = data.split('_')[1];
+
+                bot.sendMessage(chatId, `⏳ Calculando TICK para ${symbol} en terreno de ${terrain}...`, { message_thread_id: threadId });
+
+                const marketData = await fetchData(symbol, '2h', 100);
+                if (!marketData) {
+                    bot.sendMessage(chatId, `❌ Error obteniendo datos para ${symbol}`, { message_thread_id: threadId });
+                    bot.answerCallbackQuery(query.id);
+                    return;
+                }
+
+                const currentPrice = marketData.closes[marketData.closes.length - 1];
+                const tickValue = calcularTICK(marketData.highs, marketData.lows, currentPrice, terrain);
+
+                if (tickValue) {
+                    bot.sendMessage(chatId, `🎯 <b>Posible TICK (${terrain}):</b> $${tickValue}\n💎 <b>Par:</b> ${symbol} (2h)`, { message_thread_id: threadId, parse_mode: 'HTML' });
+                } else {
+                    bot.sendMessage(chatId, `❌ No se pudo calcular el TICK para ${symbol}`, { message_thread_id: threadId });
+                }
+                bot.answerCallbackQuery(query.id);
             }
         });
-    }
 
-    bot.onText(/\/tips/i, async (msg) => {
-        const chatId = msg.chat.id;
-        const threadId = msg.message_thread_id;
-        const text = `🧘 <b>La psicología es el 80% del trading.</b>\n\nEvitar el <b>TILT</b> <i>(pérdida del control emocional)</i> es la clave absoluta para alcanzar la rentabilidad consistente. Un trader tranquilo sigue su plan; un trader alterado regala su dinero al mercado. 💡📊`;
-        bot.sendMessage(chatId, text, { parse_mode: 'HTML', message_thread_id: threadId });
-    });
+        // Capture everything
+        bot.on('message', (msg) => {
+            if (!msg.chat || !msg.chat.id) return;
+            const chatId = msg.chat.id;
 
-    bot.on('callback_query', async (query) => {
-        const data = query.data;
-        const chatId = query.message.chat.id;
-        const threadId = query.message.message_thread_id;
-
-        if (data.startsWith('tick')) {
-            const terrain = data.startsWith('tickS') ? 'SHORT' : 'LONG';
-            const symbol = data.split('_')[1];
-
-            bot.sendMessage(chatId, `⏳ Calculando TICK para ${symbol} en terreno de ${terrain}...`, { message_thread_id: threadId });
-
-            const marketData = await fetchData(symbol, '2h', 100);
-            if (!marketData) {
-                bot.sendMessage(chatId, `❌ Error obteniendo datos para ${symbol}`, { message_thread_id: threadId });
-                bot.answerCallbackQuery(query.id);
+            // Sticker capture
+            if (msg.sticker && String(chatId) === String(ADMIN_ID)) {
+                const fileId = msg.sticker.file_id;
+                if (saveSticker(fileId)) {
+                    bot.sendMessage(chatId, `✅ Sticker guardado en la base de datos.`);
+                }
                 return;
             }
 
-            const currentPrice = marketData.closes[marketData.closes.length - 1];
-            const tickValue = calcularTICK(marketData.highs, marketData.lows, currentPrice, terrain);
-
-            if (tickValue) {
-                bot.sendMessage(chatId, `🎯 <b>Posible TICK (${terrain}):</b> $${tickValue}\n💎 <b>Par:</b> ${symbol} (2h)`, { message_thread_id: threadId, parse_mode: 'HTML' });
-            } else {
-                bot.sendMessage(chatId, `❌ No se pudo calcular el TICK para ${symbol}`, { message_thread_id: threadId });
+            // Audio capture
+            if ((msg.audio || msg.voice) && String(chatId) === String(ADMIN_ID)) {
+                const fileId = msg.audio ? msg.audio.file_id : msg.voice.file_id;
+                if (saveAudio(fileId)) {
+                    bot.sendMessage(chatId, `✅ Audio guardado en la base de datos.`);
+                }
+                return;
             }
-            bot.answerCallbackQuery(query.id);
-        }
-    });
 
-    // Capture everything
-    bot.on('message', (msg) => {
-        if (!msg.chat || !msg.chat.id) return;
-        const chatId = msg.chat.id;
+            if (msg.text && msg.text.startsWith('/')) return;
 
-        // Sticker capture
-        if (msg.sticker && String(chatId) === String(ADMIN_ID)) {
-            const fileId = msg.sticker.file_id;
-            if (saveSticker(fileId)) {
-                bot.sendMessage(chatId, `✅ Sticker guardado en la base de datos.`);
+            if (waitingForNickname.has(chatId)) {
+                const nickname = msg.text.trim().substring(0, 20);
+                saveUser(chatId, nickname);
+                bot.sendMessage(chatId, `✅ ¡Perfecto! Te hemos guardado como <b>${nickname}</b>. Ya puedes recibir alertas y usar comandos como /reportALL o /reportBTC para monitorear el estado crypto. \n\n🧐Ditox es el que mejor arma trades con mis alertas, únete a su grupo privado de señales aquí: https://t.me/+cDnjTS4zvoxkMDU5 \n\n🔎Explora el PANEL de IndicAlerts aquí: https://indicdtx--indicalerts-ditox-v1--tcggpbtpgkpk.code.run/`, { parse_mode: 'HTML' });
+                waitingForNickname.delete(chatId);
+                return;
             }
-            return;
-        }
 
-        // Audio capture
-        if ((msg.audio || msg.voice) && String(chatId) === String(ADMIN_ID)) {
-            const fileId = msg.audio ? msg.audio.file_id : msg.voice.file_id;
-            if (saveAudio(fileId)) {
-                bot.sendMessage(chatId, `✅ Audio guardado en la base de datos.`);
-            }
-            return;
-        }
+            const username = resolveChatName(msg);
+            saveUser(chatId, username);
+        });
 
-        if (msg.text && msg.text.startsWith('/')) return;
+        // Añadir comandos de YouTube
+        setupYoutubeCommands(bot);
 
-        if (waitingForNickname.has(chatId)) {
-            const nickname = msg.text.trim().substring(0, 20);
-            saveUser(chatId, nickname);
-            bot.sendMessage(chatId, `✅ ¡Perfecto! Te hemos guardado como <b>${nickname}</b>. Ya puedes recibir alertas y usar comandos como /reportALL o /reportBTC para monitorear el estado crypto. \n\n🧐Ditox es el que mejor arma trades con mis alertas, únete a su grupo privado de señales aquí: https://t.me/+cDnjTS4zvoxkMDU5 \n\n🔎Explora el PANEL de IndicAlerts aquí: https://indicdtx--indicalerts-ditox-v1--tcggpbtpgkpk.code.run/`, { parse_mode: 'HTML' });
-            waitingForNickname.delete(chatId);
-            return;
-        }
+        // Añadir comandos de Traders
+        setupTraderCommands(bot);
 
-        const username = resolveChatName(msg);
-        saveUser(chatId, username);
-    });
-
-    // Añadir comandos de YouTube
-    setupYoutubeCommands(bot);
-
-    // Añadir comandos de Traders
-    setupTraderCommands(bot);
-
-    console.log('Bot escuchando comandos y capturando usuarios...');
-}
+        console.log('Bot escuchando comandos y capturando usuarios...');
+    }
 
 module.exports = {
-    initBot,
-    getBot,
-    enviarTelegram,
-    simulateSignalEffect,
-    setProcesarMercado
-};
+            initBot,
+            getBot,
+            enviarTelegram,
+            simulateSignalEffect,
+            setProcesarMercado
+        };
