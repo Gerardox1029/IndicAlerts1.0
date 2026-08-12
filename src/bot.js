@@ -490,7 +490,7 @@ function setupListeners() {
 💎 <b>${symbol} (${interval})</b>
 
 💰 <b>Precio:</b> $${indicadores.currentPrice}
-📸 <b>Estado:</b> ${estadoInfo.text} ${estadoInfo.emoji}
+📸 <b>Estado(2h):</b> ${estadoInfo.text} ${estadoInfo.emoji}
 🪐 ${macroText}${tickValueStr}
 
 By Ditox🔮
@@ -549,7 +549,7 @@ By Ditox🔮
         const tickValue = calcularTICK(marketData.highs, marketData.lows, currentPrice, terrain);
 
         if (tickValue) {
-            bot.sendMessage(chatId, `🎯 <b>Posible TICK (${terrain}):</b> $${tickValue}\n💎 <b>Par:</b> ${symbol} (2h)`, { message_thread_id: threadId, parse_mode: 'HTML' });
+            bot.sendMessage(chatId, `🎯 <b>Posible TICK (${terrain}):</b> $${tickValue}\n💎 <b>Par:</b> ${symbol} (2h)`, { message_thread_id: threadId, parse_mode: 'HTML', auto_delete_time: 3000 });
         } else {
             bot.sendMessage(chatId, `❌ No se pudo calcular el TICK para ${symbol}`, { message_thread_id: threadId });
         }

@@ -94,13 +94,11 @@ function setupTraderCommands(bot) {
 
             let respuesta =
                 `🧠 <b>Trader: ${trader.name}</b>
-
-✨ <b>Aura:</b> ${auraDisplay}
-📌 <b>Estado:</b> ${stateLabel} ${emoji}
-🔥 <b>Historial reciente:</b> ${historial}`;
+                
+                🔮<b>Estado:</b> ${stateLabel} ${emoji}`;
 
             if (trader.mainIdea) {
-                respuesta += `\n💡 <b>Idea principal:</b> ${trader.mainIdea}`;
+                respuesta += `\n\n 💡<b>Idea principal:</b> ${trader.mainIdea}`;
             }
 
             // Responder editando el mensaje o enviando uno nuevo
