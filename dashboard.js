@@ -378,7 +378,7 @@ fetchDashboardData();
 if (localStorage.getItem('ditoxMode') === 'true') {
     // Show Ditox UI Elements
     const nav = document.getElementById('ditox-navbar');
-    if (nav) nav.classList.remove('hidden');
+    if (nav) { nav.classList.remove('hidden'); initSidebar(); }
 
     const adminSwitch = document.getElementById('admin-switch-container');
     if (adminSwitch) adminSwitch.classList.remove('hidden');
@@ -1407,13 +1407,18 @@ async function loadDitoxIdea(forceRender = false) {
             document.getElementById('ideas-history-section').classList.remove('hidden');
             const tbody = document.getElementById('ideas-history-body');
             if (tbody) {
-                tbody.innerHTML = histData.map(h => {
-                    let ballsHtml = '<div class="phases-container">';
+                // Store descriptions in a map keyed by data-ball-id for safe unicode handling
+                const ballDescMap = {};
+
+                tbody.innerHTML = histData.map((h, hIdx) => {
+                    let ballsHtml = '<div class="phases-container flex gap-2 items-center">';
+                    const phasesArr = h.phases || [];
                     for (let i = 1; i <= 4; i++) {
-                        const phase = h.phases ? h.phases.find(p => p.phaseNumber === i) : null;
+                        const phase = phasesArr.find(p => p.phaseNumber === i) || (phasesArr.length >= i ? phasesArr[i-1] : null);
                         if (phase && phase.description) {
-                            const descEncoded = encodeURIComponent(phase.description);
-                            ballsHtml += `<div class="phase-ball phase-green" onmouseenter="showPhaseModal(this, '${descEncoded}', ${i})" onmouseleave="hidePhaseModal()"></div>`;
+                            const ballId = `ball-${hIdx}-${i}`;
+                            ballDescMap[ballId] = { desc: phase.description, phase: i };
+                            ballsHtml += `<div class="phase-ball phase-green" data-ball-id="${ballId}" data-phase="${i}"></div>`;
                         } else {
                             ballsHtml += `<div class="phase-ball phase-gray" title="Idea descontinuada"></div>`;
                         }
@@ -1430,10 +1435,21 @@ async function loadDitoxIdea(forceRender = false) {
                     </tr>
                 `;
                 }).join('');
+
+                // Attach hover events via delegation (safe for any unicode content)
+                tbody.querySelectorAll('.phase-ball.phase-green').forEach(ball => {
+                    const ballId = ball.dataset.ballId;
+                    const phaseNum = ball.dataset.phase;
+                    if (ballDescMap[ballId]) {
+                        ball.addEventListener('mouseenter', () => showPhaseModalDirect(ballDescMap[ballId].desc, phaseNum));
+                        ball.addEventListener('mouseleave', hidePhaseModal);
+                    }
+                });
             }
         }
         
     } catch(e) { console.error("Error loading ideas:", e); }
+
 }
 
 function showPhase(num, animate = true) {
@@ -1698,28 +1714,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // Periodic silent refresh (only updates if user is not editing)
     setInterval(() => loadDitoxIdea(false), 12000); 
 
-    // --- SIDEBAR LOGIC ---
+    // --- RENTABILIDAD CHART INITIALIZATION ---
+    initRentabilidadChart();
+});
+
+// --- SIDEBAR LOGIC (global, called after hidden is removed) ---
+function initSidebar() {
     const sidebar = document.querySelector(".sidebar");
     const closeBtn = document.querySelector("#btn");
 
-    if (sidebar && closeBtn) {
-        closeBtn.addEventListener("click", () => {
-            sidebar.classList.toggle("open");
-            menuBtnChange();
-        });
-    }
+    if (!sidebar || !closeBtn) return;
+    if (closeBtn._sidebarBound) return; // Prevent duplicate listeners
+    closeBtn._sidebarBound = true;
 
-    function menuBtnChange() {
+    closeBtn.addEventListener("click", () => {
+        sidebar.classList.toggle("open");
         if (sidebar.classList.contains("open")) {
             closeBtn.classList.replace("bx-menu", "bx-menu-alt-right");
         } else {
             closeBtn.classList.replace("bx-menu-alt-right", "bx-menu");
         }
-    }
-
-    // --- RENTABILIDAD CHART INITIALIZATION ---
-    initRentabilidadChart();
-});
+    });
+}
 
 // --- RENTABILIDAD LOGIC ---
 let rentabilidadChart = null;
@@ -1730,11 +1746,12 @@ function initRentabilidadChart() {
 
     const tasaInput = document.getElementById('tasa-mensual');
     const rangoSelect = document.getElementById('rango-meses');
+    const capitalInput = document.getElementById('capital-actual');
 
     const updateChart = () => {
         const tasa = parseFloat(tasaInput.value) / 100 || 0.175;
         const meses = parseInt(rangoSelect.value) || 6;
-        const capitalInicial = 1000; // Base capital
+        const capitalInicial = parseFloat(capitalInput?.value) || 1000; // Base capital
         
         let labels = [];
         let data = [];
@@ -1789,6 +1806,10 @@ function initRentabilidadChart() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
@@ -1815,12 +1836,33 @@ function initRentabilidadChart() {
 
     tasaInput.addEventListener('input', updateChart);
     rangoSelect.addEventListener('change', updateChart);
+    if(capitalInput) capitalInput.addEventListener('input', updateChart);
     
     // Initial draw
     updateChart();
 }
 
 // --- HISTORIAL DE IDEAS MODAL & DELETE ---
+
+// Used by event delegation (receives raw description string)
+function showPhaseModalDirect(desc, phaseNum) {
+    let modal = document.getElementById('dynamic-phase-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'dynamic-phase-modal';
+        modal.className = 'phase-modal';
+        modal.innerHTML = `
+            <div class="phase-modal-header">Fase <span id="modal-phase-num"></span></div>
+            <div class="phase-modal-content" id="modal-phase-content"></div>
+        `;
+        document.body.appendChild(modal);
+    }
+    document.getElementById('modal-phase-num').innerText = phaseNum;
+    // Convert literal \n into <br> and preserve whitespace
+    const formatted = desc.replace(/\n/g, '<br>');
+    document.getElementById('modal-phase-content').innerHTML = formatted;
+    modal.classList.add('active');
+}
 
 function showPhaseModal(element, encodedDesc, phaseNum) {
     let modal = document.getElementById('dynamic-phase-modal');
@@ -1838,7 +1880,7 @@ function showPhaseModal(element, encodedDesc, phaseNum) {
     document.getElementById('modal-phase-num').innerText = phaseNum;
     
     // Decode and parse line breaks safely
-    let desc = decodeURIComponent(encodedDesc);
+    let desc = decodeURIComponent(atob(encodedDesc));
     desc = desc.replace(/\\n/g, '<br>'); // Simple fallback
     document.getElementById('modal-phase-content').innerHTML = desc; // Uses innerHTML to render bold, italic, emojis
     
@@ -1852,14 +1894,69 @@ function hidePhaseModal() {
     }
 }
 
+// --- CUSTOM CONFIRM MODAL ---
+window.customConfirm = function(message) {
+    return new Promise((resolve) => {
+        let modal = document.getElementById('custom-confirm-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'custom-confirm-modal';
+            modal.className = 'fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300';
+            modal.innerHTML = `
+                <div class="bg-gray-900 border border-purple-500/50 rounded-2xl shadow-[0_10px_40px_rgba(139,92,246,0.3)] p-6 max-w-sm w-full mx-4 transform scale-95 transition-transform duration-300">
+                    <h3 class="text-xl font-bold text-white mb-2">Confirmación</h3>
+                    <p id="custom-confirm-msg" class="text-gray-300 text-sm mb-6"></p>
+                    <div class="flex justify-end gap-3">
+                        <button id="custom-confirm-cancel" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors font-semibold">Cancelar</button>
+                        <button id="custom-confirm-ok" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-500 transition-colors shadow-[0_0_15px_rgba(220,38,38,0.4)] font-bold">Eliminar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        document.getElementById('custom-confirm-msg').innerText = message;
+        
+        const btnCancel = document.getElementById('custom-confirm-cancel');
+        const btnOk = document.getElementById('custom-confirm-ok');
+
+        const cleanup = (result) => {
+            modal.classList.remove('opacity-100', 'pointer-events-auto');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.querySelector('div').classList.remove('scale-100');
+            modal.querySelector('div').classList.add('scale-95');
+            
+            btnCancel.removeEventListener('click', onCancel);
+            btnOk.removeEventListener('click', onOk);
+            resolve(result);
+        };
+
+        const onCancel = () => cleanup(false);
+        const onOk = () => cleanup(true);
+
+        btnCancel.addEventListener('click', onCancel);
+        btnOk.addEventListener('click', onOk);
+
+        // Animate in
+        // Use timeout to allow DOM to register the class removal for transition
+        setTimeout(() => {
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.classList.add('opacity-100', 'pointer-events-auto');
+            modal.querySelector('div').classList.remove('scale-95');
+            modal.querySelector('div').classList.add('scale-100');
+        }, 10);
+    });
+};
+
 async function deleteIdeaHistory(id) {
-    if (!confirm('¿Estás seguro de que deseas eliminar este ciclo del historial?')) return;
+    const confirmed = await customConfirm('¿Estás seguro de que deseas eliminar este ciclo del historial?');
+    if (!confirmed) return;
     try {
         const res = await fetch(`/api/ideas/history/${id}`, { method: 'DELETE' });
         if (res.ok) {
             loadIdeasHistory(); // Reload history
         } else {
-            alert('Error al eliminar');
+            customAlert('Error al eliminar');
         }
     } catch(e) { console.error("Delete history error:", e); }
 }
@@ -1872,13 +1969,14 @@ async function loadIdeasHistory() {
 
 // --- BITACORA DELETE ---
 async function deleteBitacoraTrade(id) {
-    if (!confirm('¿Eliminar operación de la bitácora?')) return;
+    const confirmed = await customConfirm('¿Eliminar operación de la bitácora?');
+    if (!confirmed) return;
     try {
         const res = await fetch(`/api/bitacora/${id}`, { method: 'DELETE' });
         if (res.ok) {
             loadBitacoraTrades();
         } else {
-            alert('Error al eliminar');
+            customAlert('Error al eliminar');
         }
     } catch(e) { console.error("Delete bitacora error:", e); }
 }

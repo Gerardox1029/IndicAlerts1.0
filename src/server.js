@@ -1290,6 +1290,10 @@ app.get('/', (req, res) => {
                 </h2>
                 <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
                     <div class="flex flex-col">
+                        <label class="text-xs text-gray-400 uppercase tracking-widest mb-1">Capital Actual ($)</label>
+                        <input type="number" id="capital-actual" value="1000" step="100" class="bg-gray-900 border border-gray-700 rounded-lg p-2 text-white font-mono w-28 focus:border-purple-500 focus:outline-none">
+                    </div>
+                    <div class="flex flex-col">
                         <label class="text-xs text-gray-400 uppercase tracking-widest mb-1">Tasa Mensual (%)</label>
                         <input type="number" id="tasa-mensual" value="17.5" step="0.1" class="bg-gray-900 border border-gray-700 rounded-lg p-2 text-white font-mono w-24 focus:border-purple-500 focus:outline-none">
                     </div>
