@@ -1545,7 +1545,7 @@ function showPhase(num, animate = true) {
 <div class="box-of-star2"><div class="star star-position1"></div><div class="star star-position2"></div><div class="star star-position3"></div><div class="star star-position4"></div><div class="star star-position5"></div><div class="star star-position6"></div><div class="star star-position7"></div></div>
 <div class="box-of-star3"><div class="star star-position1"></div><div class="star star-position2"></div><div class="star star-position3"></div><div class="star star-position4"></div><div class="star star-position5"></div><div class="star star-position6"></div><div class="star star-position7"></div></div>
 <div class="box-of-star4"><div class="star star-position1"></div><div class="star star-position2"></div><div class="star star-position3"></div><div class="star star-position4"></div><div class="star star-position5"></div><div class="star star-position6"></div><div class="star star-position7"></div></div>
-<div data-js="astro" class="astronaut" style="transform: scale(0.6); top: 5%; right: 10%; opacity: 0.9;">
+<div data-js="astro" class="astronaut" style="top: 8px; left: auto; right: 8px; transform: scale(0.33); transform-origin: top right; opacity: 0.85;">
     <div class="head"></div><div class="arm arm-left"></div><div class="arm arm-right"></div>
     <div class="body"><div class="panel"></div></div><div class="leg leg-left"></div><div class="leg leg-right"></div><div class="schoolbag"></div>
 </div>`;
@@ -1737,13 +1737,41 @@ function initSidebar() {
 // --- RENTABILIDAD LOGIC ---
 let rentabilidadChart = null;
 
-function initRentabilidadChart() {
+async function initRentabilidadChart() {
     const ctx = document.getElementById('rentabilidadChart');
     if (!ctx) return;
 
     const tasaInput = document.getElementById('tasa-mensual');
     const rangoSelect = document.getElementById('rango-meses');
     const capitalInput = document.getElementById('capital-actual');
+
+    // ── Cargar valores persistidos desde la BD ──────────────────────────────
+    try {
+        const res = await fetch('/api/ditox-config');
+        if (res.ok) {
+            const cfg = await res.json();
+            if (capitalInput && cfg.capitalActual !== undefined) capitalInput.value = cfg.capitalActual;
+            if (tasaInput   && cfg.tasaMensual  !== undefined) tasaInput.value   = cfg.tasaMensual;
+        }
+    } catch (e) { console.warn('No se pudo cargar config Ditox:', e); }
+
+    // ── Guardar con debounce al cambiar ─────────────────────────────────────
+    let saveTimer = null;
+    const saveDitoxConfig = () => {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(async () => {
+            try {
+                await fetch('/api/ditox-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        capitalActual: parseFloat(capitalInput?.value) || 1000,
+                        tasaMensual:   parseFloat(tasaInput?.value)    || 17.5
+                    })
+                });
+            } catch (e) { console.warn('Error guardando config Ditox:', e); }
+        }, 800);
+    };
 
     const updateChart = () => {
         const tasa = parseFloat(tasaInput.value) / 100 || 0.175;
@@ -1831,9 +1859,9 @@ function initRentabilidadChart() {
         });
     };
 
-    tasaInput.addEventListener('input', updateChart);
+    tasaInput.addEventListener('input', () => { updateChart(); saveDitoxConfig(); });
     rangoSelect.addEventListener('change', updateChart);
-    if(capitalInput) capitalInput.addEventListener('input', updateChart);
+    if(capitalInput) capitalInput.addEventListener('input', () => { updateChart(); saveDitoxConfig(); });
     
     // Initial draw
     updateChart();

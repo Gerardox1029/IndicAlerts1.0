@@ -67,6 +67,14 @@ const YoutubeChannelSchema = new mongoose.Schema({
 });
 const YoutubeChannel = mongoose.model('YoutubeChannel', YoutubeChannelSchema);
 
+// ── Ditox Config Schema (capital & tasa persistencia) ───────────────────────
+const DitoxConfigSchema = new mongoose.Schema({
+    key:           { type: String, default: 'main', unique: true },
+    capitalActual: { type: Number, default: 1000 },
+    tasaMensual:   { type: Number, default: 17.5 }
+});
+const DitoxConfig = mongoose.model('DitoxConfig', DitoxConfigSchema);
+
 // ── Ditox Idea Schema ────────────────────────────────────────────────────────
 const DitoxIdeaPhaseSchema = new mongoose.Schema({
     phaseNumber: { type: Number, required: true }, // 1 to 4
@@ -199,5 +207,6 @@ module.exports = {
     TargetGroup,
     YoutubeChannel,
     Trader,
-    DitoxIdea
+    DitoxIdea,
+    DitoxConfig
 };

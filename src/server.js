@@ -10,7 +10,7 @@ const {
     ADMIN_PASSWORD
 } = require('./config');
 const state = require('./services/state');
-const { saveUserToMongo, User, TargetGroup, YoutubeChannel, Trader, DitoxIdea } = require('./db/mongo');
+const { saveUserToMongo, User, TargetGroup, YoutubeChannel, Trader, DitoxIdea, DitoxConfig } = require('./db/mongo');
 const { getBot, enviarTelegram, simulateSignalEffect } = require('./bot');
 const { checkConsolidatedAlerts } = require('./engine/loop');
 
@@ -564,6 +564,30 @@ app.post('/api/bitacora/update', async (req, res) => {
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
     }
+});
+
+// --- Ditox Config API (capital & tasa persistencia) ---
+app.get('/api/ditox-config', async (req, res) => {
+    try {
+        let cfg = await DitoxConfig.findOne({ key: 'main' });
+        if (!cfg) cfg = { capitalActual: 1000, tasaMensual: 17.5 };
+        res.json({ capitalActual: cfg.capitalActual, tasaMensual: cfg.tasaMensual });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/ditox-config', async (req, res) => {
+    try {
+        const { capitalActual, tasaMensual } = req.body;
+        const update = {};
+        if (capitalActual !== undefined) update.capitalActual = Number(capitalActual);
+        if (tasaMensual  !== undefined) update.tasaMensual  = Number(tasaMensual);
+        const cfg = await DitoxConfig.findOneAndUpdate(
+            { key: 'main' },
+            { $set: update },
+            { upsert: true, new: true }
+        );
+        res.json({ success: true, capitalActual: cfg.capitalActual, tasaMensual: cfg.tasaMensual });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // --- Ditox Ideas API ---

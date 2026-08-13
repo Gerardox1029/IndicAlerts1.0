@@ -294,8 +294,8 @@ function setupListeners() {
         waitingForNickname.add(chatId);
     });
 
-    // /panel
-    bot.onText(/\/panel/i, async (msg) => {
+    // /web
+    bot.onText(/\/web/i, async (msg) => {
         const chatId = msg.chat.id;
         const sendOptions = msg.message_thread_id ? { message_thread_id: msg.message_thread_id, parse_mode: 'HTML' } : { parse_mode: 'HTML' };
 
@@ -675,7 +675,7 @@ By Ditox🔮
 🔸 <code>/alsison</code> - Audio secreto clásico
 
 🖥️ <b><u>SISTEMA</u></b>
-🔸 <code>/panel</code> - Enlace al Dashboard interactivo en vivo
+🔸 <code>/web</code> - Enlace al Dashboard interactivo en vivo
 
 <i>¡Mantente siempre alerta con IndicAlerts!</i> 🚀💎
 `;
