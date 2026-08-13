@@ -1721,19 +1721,16 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- SIDEBAR LOGIC (global, called after hidden is removed) ---
 function initSidebar() {
     const sidebar = document.querySelector(".sidebar");
-    const closeBtn = document.querySelector("#btn");
 
-    if (!sidebar || !closeBtn) return;
-    if (closeBtn._sidebarBound) return; // Prevent duplicate listeners
-    closeBtn._sidebarBound = true;
+    if (!sidebar || sidebar._sidebarBound) return;
+    sidebar._sidebarBound = true;
 
-    closeBtn.addEventListener("click", () => {
-        sidebar.classList.toggle("open");
-        if (sidebar.classList.contains("open")) {
-            closeBtn.classList.replace("bx-menu", "bx-menu-alt-right");
-        } else {
-            closeBtn.classList.replace("bx-menu-alt-right", "bx-menu");
-        }
+    // Expand on hover, collapse on leave — no click needed
+    sidebar.addEventListener("mouseenter", () => {
+        sidebar.classList.add("hovered");
+    });
+    sidebar.addEventListener("mouseleave", () => {
+        sidebar.classList.remove("hovered");
     });
 }
 

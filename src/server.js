@@ -153,10 +153,10 @@ function getAuraLevel(hits, misses) {
     if (total === 0) return { winRate: 0, level: 'B' };
     const wr = (hits / total) * 100;
     let level;
-    if (wr >= 80)      level = 'AAA';
+    if (wr >= 80) level = 'AAA';
     else if (wr >= 75) level = 'AA';
     else if (wr >= 70) level = 'A';
-    else               level = 'B';
+    else level = 'B';
     return { winRate: parseFloat(wr.toFixed(1)), level };
 }
 
@@ -605,7 +605,7 @@ app.put('/api/ideas/phase/:number', async (req, res) => {
         }
         if (direction) idea.direction = direction;
         if (timeframe) idea.timeframe = timeframe;
-        
+
         await idea.save();
         res.json({ success: true, idea });
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -900,52 +900,8 @@ app.get('/', (req, res) => {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="text-gray-200 min-h-screen p-4 md:p-8">
-    <div class="stars-layer"></div>
 
-    <div class="max-w-7xl mx-auto animate-fadeInUp">
-        
-        <!-- Header -->
-        <header class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
-                <div class="p-3 bg-blue-600/20 rounded-xl border border-blue-500/30">
-                    <span class="text-3xl">🚀</span>
-                </div>
-                <div>
-                    <h1 class="text-4xl font-bold text-white tracking-tight">IndicAlerts <span class="text-blue-500">Ditox</span></h1>
-                    <p class="text-gray-400 text-sm">Sistema de Monitoreo según RSI22 Suavizado</p>
-                </div>
-            </div>
-            
-            <div class="flex items-center gap-4">
-                 <button onclick="document.getElementById('modal-info').showModal()" class="text-sm text-gray-400 hover:text-white transition-colors">¿Qué es?</button>
-                <div class="h-4 w-px bg-gray-700"></div>
-                <button onclick="document.getElementById('modal-alert').showModal()" class="text-sm text-red-400 hover:text-red-300 transition-colors">⚠️ Disclaimer</button>
-                <div class="h-4 w-px bg-gray-700"></div>
-                <button id="btn-soy-ditox" onclick="toggleDitoxMode()" class="text-sm text-purple-400 hover:text-purple-300 transition-colors bg-purple-900/20 px-3 py-1 rounded border border-purple-500/20">Soy Ditox</button>
-                
-                <!-- API Validity Bar (Admin Only) -->
-                <div id="api-validity-container" class="hidden flex-col gap-1 bg-gray-800/50 p-2 rounded-xl border border-gray-700 w-48">
-                    <div class="flex justify-between text-[10px] font-mono text-gray-400 uppercase">
-                        <span>Vigencia de API sin IP</span>
-                        <span id="api-validity-text" class="text-green-400">29 días</span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                        <div id="api-validity-bar" class="bg-blue-500 h-1.5 rounded-full" style="width: 100%"></div>
-                    </div>
-                </div>
-                
-                <!-- Ditox Active Switch (Admin Only) -->
-                <div id="admin-switch-container" class="hidden flex items-center gap-2 bg-gray-800/50 p-2 rounded-xl border border-gray-700">
-                    <span class="text-[10px] font-mono text-gray-400 uppercase">Bot:</span>
-                    <button id="btn-admin-switch" onclick="toggleAdminSwitch()" class="w-12 h-6 bg-red-600 rounded-full relative transition-colors duration-300">
-                        <div class="w-4 h-4 bg-white rounded-full absolute top-1 left-1 transition-transform duration-300"></div>
-                    </button>
-                    <span id="status-text-switch" class="text-xs font-bold text-red-400">OFF</span>
-                </div>
-            </div>
-        </header>
-
-        <!-- Sidebar Navigation -->
+ <!-- Sidebar Navigation -->
         <div class="sidebar hidden" id="ditox-navbar">
             <div class="logo-details">
                 <i class='bx bxs-rocket icon'></i>
@@ -1004,6 +960,53 @@ app.get('/', (req, res) => {
                 </li>
             </ul>
         </div>
+
+
+
+    <div class="stars-layer"></div>
+
+    <div class="max-w-7xl mx-auto animate-fadeInUp">
+        
+        <!-- Header -->
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-blue-600/20 rounded-xl border border-blue-500/30">
+                    <span class="text-3xl">🚀</span>
+                </div>
+                <div>
+                    <h1 class="text-4xl font-bold text-white tracking-tight">IndicAlerts <span class="text-blue-500">Ditox</span></h1>
+                    <p class="text-gray-400 text-sm">Sistema de Monitoreo según RSI22 Suavizado</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                 <button onclick="document.getElementById('modal-info').showModal()" class="text-sm text-gray-400 hover:text-white transition-colors">¿Qué es?</button>
+                <div class="h-4 w-px bg-gray-700"></div>
+                <button onclick="document.getElementById('modal-alert').showModal()" class="text-sm text-red-400 hover:text-red-300 transition-colors">⚠️ Disclaimer</button>
+                <div class="h-4 w-px bg-gray-700"></div>
+                <button id="btn-soy-ditox" onclick="toggleDitoxMode()" class="text-sm text-purple-400 hover:text-purple-300 transition-colors bg-purple-900/20 px-3 py-1 rounded border border-purple-500/20">Soy Ditox</button>
+                
+                <!-- API Validity Bar (Admin Only) -->
+                <div id="api-validity-container" class="hidden flex-col gap-1 bg-gray-800/50 p-2 rounded-xl border border-gray-700 w-48">
+                    <div class="flex justify-between text-[10px] font-mono text-gray-400 uppercase">
+                        <span>Vigencia de API sin IP</span>
+                        <span id="api-validity-text" class="text-green-400">29 días</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                        <div id="api-validity-bar" class="bg-blue-500 h-1.5 rounded-full" style="width: 100%"></div>
+                    </div>
+                </div>
+                
+                <!-- Ditox Active Switch (Admin Only) -->
+                <div id="admin-switch-container" class="hidden flex items-center gap-2 bg-gray-800/50 p-2 rounded-xl border border-gray-700">
+                    <span class="text-[10px] font-mono text-gray-400 uppercase">Bot:</span>
+                    <button id="btn-admin-switch" onclick="toggleAdminSwitch()" class="w-12 h-6 bg-red-600 rounded-full relative transition-colors duration-300">
+                        <div class="w-4 h-4 bg-white rounded-full absolute top-1 left-1 transition-transform duration-300"></div>
+                    </button>
+                    <span id="status-text-switch" class="text-xs font-bold text-red-400">OFF</span>
+                </div>
+            </div>
+        </header>
 
         <!-- SECTION: DASHBOARD -->
         <div id="section-dashboard" class="space-y-12">

@@ -3819,7 +3819,7 @@
   box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
 }
 
-.sidebar.open {
+.sidebar.hovered {
   width: 250px;
 }
 
@@ -3836,8 +3836,8 @@
   transition: all 0.5s ease;
 }
 
-.sidebar.open .logo-details .icon,
-.sidebar.open .logo-details .logo_name {
+.sidebar.hovered .logo-details .icon,
+.sidebar.hovered .logo-details .logo_name {
   opacity: 1;
 }
 
@@ -3856,7 +3856,7 @@
   line-height: 50px;
 }
 
-.sidebar.open .logo-details #btn {
+.sidebar.hovered .logo-details #btn {
   text-align: right;
 }
 
@@ -3897,7 +3897,7 @@
   transform: translateY(-50%);
 }
 
-.sidebar.open ul.nav-list li .tooltip {
+.sidebar.hovered ul.nav-list li .tooltip {
   display: none;
 }
 
@@ -3938,7 +3938,7 @@
   transition: 0.4s;
 }
 
-.sidebar.open ul.nav-list li button .links_name {
+.sidebar.hovered ul.nav-list li button .links_name {
   opacity: 1;
   pointer-events: auto;
 }
