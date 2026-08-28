@@ -220,12 +220,19 @@ async function procesarMercado() {
 
             // --- Lógica de validación con 4h para alertas de 2h y estado ---
             let macroTrend = 'NEUTRAL'; // ALCISTA, BAJISTA, NEUTRAL
+            let tangentes = {};
 
-            // Solo buscamos 4h si es 2h
+            // Solo buscamos 4h y 1d si es 2h (para guardar en el dashboard)
             if (interval === '2h') {
                 try {
+                    const { calcularTangenteRSI } = require('./indicators');
+                    
+                    // Tangente 2h (usando la data actual)
+                    tangentes['2h'] = calcularTangenteRSI(closes) || 0;
+
                     const data4h = await fetchData(symbol, '4h');
                     if (data4h) {
+                        tangentes['4h'] = calcularTangenteRSI(data4h.closes) || 0;
                         const ind4h = calcularIndicadores(data4h.closes, data4h.highs, data4h.lows, 22, 22, 10);
                         if (ind4h && ind4h.tangentsHistory && ind4h.tangentsHistory.length > 0) {
                             // Evaluar promedio de últimas 10 pendientes
@@ -239,8 +246,14 @@ async function procesarMercado() {
                             }
                         }
                     }
+
+                    const data1d = await fetchData(symbol, '1d');
+                    if (data1d) {
+                        tangentes['1d'] = calcularTangenteRSI(data1d.closes) || 0;
+                    }
+
                 } catch (e) {
-                    console.error(`Error validando 4h para ${symbol}:`, e.message);
+                    console.error(`Error validando tangentes para ${symbol}:`, e.message);
                 }
             }
 
@@ -260,6 +273,11 @@ async function procesarMercado() {
             estadoAlertas[key].currentStateEmoji = estadoInfo.emoji;
             estadoAlertas[key].currentPrice = indicadores.currentPrice;
             estadoAlertas[key].tangente = indicadores.tangente;
+            
+            // Guardar tangentes calculadas para el modal
+            if (interval === '2h') {
+                estadoAlertas[key].tangentes = tangentes;
+            }
 
             // Actualizar Estado en Dashboard con info Macro
             if (macroTrend === 'ALCISTA' && estadoInfo.terrain === 'LONG') {

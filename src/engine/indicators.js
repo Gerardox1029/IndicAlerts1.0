@@ -99,7 +99,23 @@ function calcularTICK(highs, lows, currentPrice, terrain) {
     return tickValue.toFixed(decimals);
 }
 
+function calcularTangenteRSI(closes) {
+    if (!closes || closes.length < 35) return null; // 14 (RSI) + 20 (SMA)
+    
+    const rsiValues = RSI.calculate({ values: closes, period: 14 });
+    if (rsiValues.length < 1) return null;
+    
+    const smaValues = SMA.calculate({ values: rsiValues, period: 20 });
+    if (smaValues.length < 2) return null;
+    
+    const currentSMA = smaValues[smaValues.length - 1];
+    const prevSMA = smaValues[smaValues.length - 2];
+    
+    return currentSMA - prevSMA;
+}
+
 module.exports = {
     calcularIndicadores,
-    calcularTICK
+    calcularTICK,
+    calcularTangenteRSI
 };
