@@ -56,6 +56,15 @@ function openReviewModal(symbol, price, status, emoji, entryType, entryPrice, ma
         }
     }
 
+    // Populate Tangentes (RSI Suavizado 20)
+    // Try to get from cached dashboard data
+    const key = symbol + '_2h';
+    const estado = (window._dashboardData && window._dashboardData.estadoAlertas && window._dashboardData.estadoAlertas[key]) || {};
+    const tangentes = estado.tangentes || {};
+    applyTangenteToEl('tangente-2h', tangentes['2h'] !== undefined ? tangentes['2h'] : null);
+    applyTangenteToEl('tangente-4h', tangentes['4h'] !== undefined ? tangentes['4h'] : null);
+    applyTangenteToEl('tangente-1d', tangentes['1d'] !== undefined ? tangentes['1d'] : null);
+
     document.getElementById('modal-review').showModal();
 }
 
@@ -63,6 +72,7 @@ async function fetchDashboardData() {
     try {
         const response = await fetch('/api/dashboard-data');
         const data = await response.json();
+        window._dashboardData = data; // Cache for tangentes
 
         // Actualizar Market Summary (Rocket Gauge)
         const sm = data.marketSummary;
@@ -358,11 +368,36 @@ function toggleDitoxMode() {
         if (password && password.trim() === ADMIN_PWD.trim()) {
             console.log("Password correct, enabling Ditox Mode");
             localStorage.setItem('ditoxMode', 'true');
+            localStorage.removeItem('aplusMode');
             // User requested NO confirmation message, just enter.
             location.reload();
         } else {
             console.log("Password incorrect:", password);
             alert("❌ Contraseña incorrecta");
+        }
+    });
+}
+
+function toggleAPlusMode() {
+    customPrompt("🔑 Contraseña A+", async (password) => {
+        if (!password) return;
+        try {
+            const res = await fetch('/api/verify-aplus', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: password.trim() })
+            });
+            const data = await res.json();
+            if (data.success) {
+                console.log("A+ Password correct");
+                localStorage.setItem('aplusMode', 'true');
+                localStorage.removeItem('ditoxMode');
+                location.reload();
+            } else {
+                alert("❌ Contraseña incorrecta");
+            }
+        } catch (e) {
+            console.error("Error verifying A+ password:", e);
         }
     });
 }
@@ -374,41 +409,69 @@ function toggleDitoxMode() {
 console.log("Checking Ditox Mode:", localStorage.getItem('ditoxMode'));
 // Immediate fetch to prevent delay in Switch State or Data
 fetchDashboardData();
+// Always init mobile nav on load; CSS hides it on desktop
+initMobileNav();
 
-if (localStorage.getItem('ditoxMode') === 'true') {
-    // Show Ditox UI Elements
+if (localStorage.getItem('ditoxMode') === 'true' || localStorage.getItem('aplusMode') === 'true') {
+    const isDitox = localStorage.getItem('ditoxMode') === 'true';
+    const isAPlus = localStorage.getItem('aplusMode') === 'true';
+
+    // Show Nav
     const nav = document.getElementById('ditox-navbar');
     if (nav) { nav.classList.remove('hidden'); initSidebar(); }
+    initMobileNav();
 
-    const adminSwitch = document.getElementById('admin-switch-container');
-    if (adminSwitch) adminSwitch.classList.remove('hidden');
-    
-    const apiValidity = document.getElementById('api-validity-container');
-    if (apiValidity) apiValidity.classList.remove('hidden');
-    if (apiValidity) apiValidity.classList.replace('hidden', 'flex');
-
-    loadBitacoraTrades(); // Load Bitacora data
-
-    // Hide "Soy Ditox" button if visible
+    // Hide Buttons
     const btnSoyDitox = document.getElementById('btn-soy-ditox');
     if (btnSoyDitox) btnSoyDitox.classList.add('hidden');
+    const btnAPlus = document.getElementById('btn-aplus');
+    if (btnAPlus) btnAPlus.classList.add('hidden');
 
     // Add Logout Button
     const headerBtns = document.querySelector('header .flex.items-center.gap-4');
     if (headerBtns && !document.getElementById('btn-logout')) {
         const btnLogout = document.createElement('button');
         btnLogout.id = 'btn-logout';
-        btnLogout.textContent = 'Salir (Ditox)';
+        btnLogout.textContent = isDitox ? 'Salir (Ditox)' : 'Salir (A+)';
         btnLogout.className = 'text-sm text-red-500 hover:text-red-400 transition-colors bg-red-900/20 px-3 py-1 rounded border border-red-500/20 ml-2';
         btnLogout.onclick = () => {
             localStorage.removeItem('ditoxMode');
+            localStorage.removeItem('aplusMode');
             location.reload();
         };
         headerBtns.appendChild(btnLogout);
     }
 
-    // Load Users
-    fetch('/admin/users')
+    if (isDitox) {
+        // Show Ditox Specific UI Elements
+        const adminSwitch = document.getElementById('admin-switch-container');
+        if (adminSwitch) adminSwitch.classList.remove('hidden');
+        
+        const apiValidity = document.getElementById('api-validity-container');
+        if (apiValidity) apiValidity.classList.replace('hidden', 'flex');
+
+        loadBitacoraTrades(); // Load Bitacora data
+        loadTradersUI(); // If available
+        
+        // Show Ideas admin buttons
+        document.querySelectorAll('.ditox-admin').forEach(el => el.classList.remove('hidden'));
+    }
+
+    if (isAPlus) {
+        // Hide Restricted Sidebar Items for A+
+        const restrictedSections = ['bitacora', 'history', 'users', 'broadcast'];
+        const navBtns = document.querySelectorAll('.nav-btn');
+        navBtns.forEach(btn => {
+            const sectionArg = btn.getAttribute('onclick');
+            if (sectionArg && restrictedSections.some(sec => sectionArg.includes(`'${sec}'`))) {
+                btn.parentElement.style.display = 'none'; // Hide the <li>
+            }
+        });
+        
+        loadTradersUI(); // A+ can edit traders
+    if (isDitox) {
+        // Load Users (Ditox only)
+        fetch('/admin/users')
         .then(r => r.json())
         .then(users => {
             const tbody = document.getElementById('user-table-body');
@@ -473,9 +536,12 @@ if (localStorage.getItem('ditoxMode') === 'true') {
             }).join('');
         });
 
-    loadGroupsForBroadcast();
+        loadGroupsForBroadcast();
+    } // end isDitox
+
+    // Both modes load: youtube channels & traders
     loadYoutubeChannels();
-    loadTraders(); // ← Cargar traders al entrar en modo admin
+    loadTraders(); // ← Cargar traders
 }
 
 function updateSignal(signalId) {
@@ -1454,7 +1520,10 @@ async function loadDitoxIdea(forceRender = false) {
 
 function showPhase(num, animate = true) {
     currentPhaseView = num;
+    _mobNavCurrentPhase = num; // Keep mobile in sync
+    syncMobilePhase(num); // Sync mobile slider display
     if (!currentIdeaData || !currentIdeaData.phases) return;
+
     
     // Highlight selected sphere
     for(let i=1; i<=4; i++) {
@@ -1732,6 +1801,137 @@ function initSidebar() {
     sidebar.addEventListener("mouseleave", () => {
         sidebar.classList.remove("hovered");
     });
+}
+
+// ========== MOBILE LIQUID NAV LOGIC ==========
+let _mobNavCurrentPhase = 1;
+const PHASE_NAMES = ['Sospecha', 'Idea', 'Actualización', 'Resultado'];
+const PHASE_GRADS = [
+    'from-blue-400 to-blue-600',
+    'from-indigo-400 to-indigo-600',
+    'from-purple-400 to-purple-600',
+    'from-pink-400 to-pink-600'
+];
+
+function mobNavClick(btn, section) {
+    const list = document.querySelectorAll('#mob-nav-list li');
+    list.forEach(li => li.classList.remove('active'));
+    btn.closest('li').classList.add('active');
+
+    // Move indicator
+    const indicator = document.querySelector('.mn-indicator');
+    if (indicator) {
+        const items = Array.from(document.querySelectorAll('#mob-nav-list li'));
+        const idx = items.indexOf(btn.closest('li'));
+        indicator.style.transform = `translateX(${idx * 100}%)`;
+    }
+
+    showSection(section);
+}
+
+function initMobileNav() {
+    const mobileNav = document.getElementById('mobile-liquid-nav');
+    if (!mobileNav) return;
+    mobileNav.classList.remove('hidden');
+
+    // Show Ditox-only nav items
+    const isDitox = localStorage.getItem('ditoxMode') === 'true';
+    if (isDitox) {
+        document.querySelectorAll('.ditox-admin-nav').forEach(el => el.classList.remove('hidden'));
+    }
+
+    // Position indicator on active item initially
+    const activeItem = document.querySelector('#mob-nav-list li.active');
+    const indicator = document.querySelector('.mn-indicator');
+    if (activeItem && indicator) {
+        const items = Array.from(document.querySelectorAll('#mob-nav-list li'));
+        const idx = items.indexOf(activeItem);
+        indicator.style.transform = `translateX(${idx * 100}%)`;
+    }
+}
+
+// ========== MOBILE PHASE SLIDER LOGIC ==========
+function mobilePhaseNav(dir) {
+    const idea = document.getElementById('idea-active');
+    if (!idea || idea.classList.contains('hidden')) return;
+    
+    _mobNavCurrentPhase = Math.max(1, Math.min(4, _mobNavCurrentPhase + dir));
+    syncMobilePhase(_mobNavCurrentPhase);
+    showPhase(_mobNavCurrentPhase);
+}
+
+function syncMobilePhase(phase) {
+    const numEl = document.getElementById('mob-phase-num');
+    const nameEl = document.getElementById('mob-phase-name');
+    const sphereEl = document.getElementById('mob-sphere-active');
+    
+    if (numEl) numEl.textContent = phase;
+    if (nameEl) nameEl.textContent = PHASE_NAMES[phase - 1] || '';
+    if (sphereEl) {
+        sphereEl.className = `w-20 h-20 rounded-full bg-gradient-to-br ${PHASE_GRADS[phase - 1]} flex items-center justify-center border-2 border-white/20 relative overflow-hidden`;
+        sphereEl.style.boxShadow = phase === 1 ? '0 0 24px rgba(59,130,246,0.5)' :
+            phase === 2 ? '0 0 24px rgba(99,102,241,0.5)' :
+            phase === 3 ? '0 0 24px rgba(168,85,247,0.5)' : '0 0 24px rgba(236,72,153,0.5)';
+    }
+
+    // Update dots
+    for (let i = 1; i <= 4; i++) {
+        const dot = document.getElementById(`mob-dot-${i}`);
+        if (dot) {
+            dot.className = i === phase
+                ? 'w-3 h-3 rounded-full transition-all ' + (phase === 1 ? 'bg-blue-400' : phase === 2 ? 'bg-indigo-400' : phase === 3 ? 'bg-purple-400' : 'bg-pink-400')
+                : 'w-2 h-2 rounded-full bg-gray-600 transition-all';
+        }
+    }
+}
+
+// ========== TANGENT COLOR LOGIC ==========
+function getTangenteStyle(p) {
+    if (p === null || p === undefined || isNaN(p)) return { text: '—', className: 'text-gray-500', animClass: '' };
+
+    const val = parseFloat(p.toFixed(4));
+    let colorClass = '';
+    let animClass = '';
+    const display = val >= 0 ? '+' + val.toFixed(4) : val.toFixed(4);
+
+    if (val < -1) {
+        colorClass = 'text-red-500';
+        animClass = 'tangent-shake';
+    } else if (val < -0.5) {
+        colorClass = 'text-red-500';
+        animClass = 'tangent-pulse';
+    } else if (val < -0.3) {
+        colorClass = 'text-red-400';
+        animClass = '';
+    } else if (val > 1) {
+        colorClass = 'text-green-400';
+        animClass = 'tangent-shake';
+    } else if (val > 0.5) {
+        colorClass = 'text-green-400';
+        animClass = 'tangent-pulse';
+    } else if (val > 0.3) {
+        colorClass = 'text-green-400';
+        animClass = '';
+    } else {
+        // Between -0.3 and 0.3
+        colorClass = '';
+        animClass = 'tangent-pulse';
+    }
+
+    return { text: display, colorClass, animClass, isCyan: val > -0.3 && val < 0.3 };
+}
+
+function applyTangenteToEl(elId, p) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const { text, colorClass, animClass, isCyan } = getTangenteStyle(p);
+    el.textContent = text;
+    el.className = `text-xl font-bold tabular-nums ${colorClass} ${animClass}`;
+    if (isCyan) {
+        el.style.color = '#B2FFFF';
+    } else {
+        el.style.color = '';
+    }
 }
 
 // --- RENTABILIDAD LOGIC ---
