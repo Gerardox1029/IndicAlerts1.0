@@ -1969,10 +1969,10 @@ function syncMobilePhase(phase) {
 function getTangenteStyle(pObj) {
     if (!pObj || typeof pObj.tangente !== 'number') return { text: '—', color: '#6B7280', animClass: '' };
 
-    const val = parseFloat(pObj.tangente.toFixed(4));
+    const val = parseFloat(pObj.tangente.toFixed(2));
     let color = '';
     let animClass = '';
-    const display = val >= 0 ? '+' + val.toFixed(4) : val.toFixed(4);
+    const display = val >= 0 ? '+' + val.toFixed(2) : val.toFixed(2);
 
     // Color gradient calculation
     if (val === 0) {
@@ -2041,7 +2041,7 @@ function drawMiniGraph(canvasId, pObj) {
         ctx.setLineDash([]);
         
         ctx.beginPath();
-        ctx.arc(dotX - 4, h - padding, 2, 0, Math.PI * 2);
+        ctx.arc(dotX, h - padding, 6, 0, Math.PI * 2);
         ctx.fill();
         
     } else if (avgSMA < currentSMA && tangente >= -0.3 && tangente <= 0.3) {
@@ -2062,7 +2062,7 @@ function drawMiniGraph(canvasId, pObj) {
         ctx.setLineDash([]);
         
         ctx.beginPath();
-        ctx.arc(dotX - 4, padding, 2, 0, Math.PI * 2);
+        ctx.arc(dotX, padding, 6, 0, Math.PI * 2);
         ctx.fill();
         
     } else {

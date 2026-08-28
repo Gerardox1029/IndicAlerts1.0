@@ -1802,7 +1802,6 @@ app.get('/', (req, res) => {
             </div>
 
             <div id="review-ditox-recommendation" class="mt-4 p-4 rounded-2xl bg-gray-800/50 border border-gray-700 text-center">
-                <p class="text-[10px] text-blue-400 uppercase font-bold mb-1 tracking-wider">🧠 Recomendación Ditox</p>
                 <p id="ditox-rec-text" class="text-sm font-bold text-white"></p>
             </div>
             <br>
