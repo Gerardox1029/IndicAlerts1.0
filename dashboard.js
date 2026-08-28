@@ -494,6 +494,9 @@ if (localStorage.getItem('ditoxMode') === 'true' || localStorage.getItem('aplusM
     // Mobile nav is already init'd above; here we reveal extra items if Ditox
     if (isDitox) {
         document.querySelectorAll('.ditox-admin-nav').forEach(el => el.classList.remove('hidden'));
+    } else if (isAPlus) {
+        // A+ mode: hide desktop admin shortcuts (only Panel, YouTube, Traders remain)
+        document.querySelectorAll('#ditox-navbar .aplus-hidden').forEach(el => el.classList.add('hidden'));
     }
 
     // Hide login buttons
@@ -2038,7 +2041,7 @@ function drawMiniGraph(canvasId, pObj) {
         ctx.setLineDash([]);
         
         ctx.beginPath();
-        ctx.arc(dotX, h - padding, 2, 0, Math.PI * 2);
+        ctx.arc(dotX - 4, h - padding, 2, 0, Math.PI * 2);
         ctx.fill();
         
     } else if (avgSMA < currentSMA && tangente >= -0.3 && tangente <= 0.3) {
@@ -2059,7 +2062,7 @@ function drawMiniGraph(canvasId, pObj) {
         ctx.setLineDash([]);
         
         ctx.beginPath();
-        ctx.arc(dotX, padding, 2, 0, Math.PI * 2);
+        ctx.arc(dotX - 4, padding, 2, 0, Math.PI * 2);
         ctx.fill();
         
     } else {

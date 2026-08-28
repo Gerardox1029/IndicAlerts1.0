@@ -1045,28 +1045,28 @@ app.get('/', (req, res) => {
                     </button>
                     <span class="tooltip">Panel del Bot</span>
                 </li>
-                <li>
+                <li class="aplus-hidden">
                     <button onclick="showSection('bitacora')" class="nav-btn">
                         <i class='bx bx-book-bookmark'></i>
                         <span class="links_name">Bitácora</span>
                     </button>
                     <span class="tooltip">Bitácora Ditox</span>
                 </li>
-                <li>
+                <li class="aplus-hidden">
                     <button onclick="showSection('history')" class="nav-btn">
                         <i class='bx bx-history'></i>
                         <span class="links_name">Historial</span>
                     </button>
                     <span class="tooltip">Historial de Señales</span>
                 </li>
-                <li>
+                <li class="aplus-hidden">
                     <button onclick="showSection('users')" class="nav-btn">
                         <i class='bx bx-user'></i>
                         <span class="links_name">Usuarios</span>
                     </button>
                     <span class="tooltip">Panel de Usuarios</span>
                 </li>
-                <li>
+                <li class="aplus-hidden">
                     <button onclick="showSection('broadcast')" class="nav-btn">
                         <i class='bx bx-broadcast'></i>
                         <span class="links_name">Broadcast</span>
