@@ -416,16 +416,20 @@ if (localStorage.getItem('ditoxMode') === 'true' || localStorage.getItem('aplusM
     const isDitox = localStorage.getItem('ditoxMode') === 'true';
     const isAPlus = localStorage.getItem('aplusMode') === 'true';
 
-    // Show Nav
+    // Show Sidebar Nav (desktop)
     const nav = document.getElementById('ditox-navbar');
     if (nav) { nav.classList.remove('hidden'); initSidebar(); }
-    initMobileNav();
 
-    // Hide Buttons
+    // Mobile nav is already init'd above; here we reveal extra items if Ditox
+    if (isDitox) {
+        document.querySelectorAll('.ditox-admin-nav').forEach(el => el.classList.remove('hidden'));
+    }
+
+    // Hide login buttons
     const btnSoyDitox = document.getElementById('btn-soy-ditox');
     if (btnSoyDitox) btnSoyDitox.classList.add('hidden');
-    const btnAPlus = document.getElementById('btn-aplus');
-    if (btnAPlus) btnAPlus.classList.add('hidden');
+    const btnAPlusEl = document.getElementById('btn-aplus');
+    if (btnAPlusEl) btnAPlusEl.classList.add('hidden');
 
     // Add Logout Button
     const headerBtns = document.querySelector('header .flex.items-center.gap-4');
@@ -442,107 +446,94 @@ if (localStorage.getItem('ditoxMode') === 'true' || localStorage.getItem('aplusM
         headerBtns.appendChild(btnLogout);
     }
 
+    // ─── DITOX ONLY ──────────────────────────────────────────────────────────
     if (isDitox) {
-        // Show Ditox Specific UI Elements
+        // Show admin controls
         const adminSwitch = document.getElementById('admin-switch-container');
         if (adminSwitch) adminSwitch.classList.remove('hidden');
-        
         const apiValidity = document.getElementById('api-validity-container');
         if (apiValidity) apiValidity.classList.replace('hidden', 'flex');
 
-        loadBitacoraTrades(); // Load Bitacora data
-        loadTradersUI(); // If available
-        
         // Show Ideas admin buttons
         document.querySelectorAll('.ditox-admin').forEach(el => el.classList.remove('hidden'));
-    }
 
-    if (isAPlus) {
-        // Hide Restricted Sidebar Items for A+
-        const restrictedSections = ['bitacora', 'history', 'users', 'broadcast'];
-        const navBtns = document.querySelectorAll('.nav-btn');
-        navBtns.forEach(btn => {
-            const sectionArg = btn.getAttribute('onclick');
-            if (sectionArg && restrictedSections.some(sec => sectionArg.includes(`'${sec}'`))) {
-                btn.parentElement.style.display = 'none'; // Hide the <li>
-            }
-        });
-        
-        loadTradersUI(); // A+ can edit traders
-    if (isDitox) {
-        // Load Users (Ditox only)
-        fetch('/admin/users')
-        .then(r => r.json())
-        .then(users => {
-            const tbody = document.getElementById('user-table-body');
-            if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="py-8 text-center text-gray-500">No hay usuarios registrados.</td></tr>';
-                return;
-            }
-            tbody.innerHTML = users.map(u => {
-                // Generate Elegant Checkboxes
-                let checksHtml = '<div class="grid grid-cols-3 lg:grid-cols-4 gap-3 p-3 bg-gray-900/40 rounded-2xl border border-gray-700/30">';
-                const symbols = window.FLAT_SYMBOLS || [];
-
-                symbols.forEach(sym => {
-                    const isChecked = u.preferences && u.preferences.includes(sym) ? 'checked' : '';
-                    const symClean = sym.replace('USDT', '');
-                    checksHtml += `
-                        <label class="group flex items-center justify-between p-2 rounded-xl border border-transparent hover:border-purple-500/40 hover:bg-purple-900/10 transition-all cursor-pointer">
-                            <span class="text-[11px] font-bold text-gray-400 group-hover:text-purple-300 font-mono tracking-tighter">${symClean}</span>
-                            <div class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" onchange="toggleUserPref('${u.id}', '${sym}', this.checked)" ${isChecked} class="pref-chk-${u.id} sr-only peer" value="${sym}">
-                                <div class="w-7 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
-                            </div>
-                        </label>
-                    `;
-                });
-                checksHtml += '</div>';
-
-                return `
-                <tr class="border-b border-gray-700/50 hover:bg-white/5 transition-colors">
-                    <td class="py-6 px-6 text-gray-500 text-[10px] font-mono">${u.id}</td>
-                    <td class="py-6 px-6">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-xs font-bold shadow-lg">
-                                ${u.username ? u.username[0].toUpperCase() : 'A'}
-                            </div>
-                            <span class="text-white font-bold tracking-tight">${u.username || 'Anónimo'}</span>
-                        </div>
-                    </td>
-                    <td class="py-6 px-6 w-full lg:w-2/3">
-                        ${checksHtml}
-                    </td>
-                    <td class="py-6 px-6">
-                        <div class="flex flex-col gap-2 min-w-[120px]">
-                            <button onclick="sendPrivateMessage('${u.id}', '${u.username || 'Usuario'}')" 
-                                class="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg hover:shadow-blue-500/20 active:scale-95">
-                                <span>📩</span> Mensaje
-                            </button>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button onclick="simulateUserAlert('${u.id}')" title="Test Alert"
-                                    class="bg-gray-800 hover:bg-purple-900/40 text-purple-400 p-2 rounded-lg text-xs transition-colors border border-gray-700 hover:border-purple-500/30 flex items-center justify-center">
-                                    🧪
-                                </button>
-                                <button onclick="deleteUser('${u.id}')" title="Eliminar"
-                                    class="bg-gray-800 hover:bg-red-900/40 text-red-500 p-2 rounded-lg text-xs transition-colors border border-gray-700 hover:border-red-500/30 flex items-center justify-center">
-                                    🗑️
-                                </button>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                `;
-            }).join('');
-        });
-
+        loadBitacoraTrades();
         loadGroupsForBroadcast();
+
+        // Load Users table
+        fetch('/admin/users')
+            .then(r => r.json())
+            .then(users => {
+                const tbody = document.getElementById('user-table-body');
+                if (!tbody) return;
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="py-8 text-center text-gray-500">No hay usuarios registrados.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = users.map(u => {
+                    let checksHtml = '<div class="grid grid-cols-3 lg:grid-cols-4 gap-3 p-3 bg-gray-900/40 rounded-2xl border border-gray-700/30">';
+                    const symbols = window.FLAT_SYMBOLS || [];
+                    symbols.forEach(sym => {
+                        const isChecked = u.preferences && u.preferences.includes(sym) ? 'checked' : '';
+                        const symClean = sym.replace('USDT', '');
+                        checksHtml += `
+                            <label class="group flex items-center justify-between p-2 rounded-xl border border-transparent hover:border-purple-500/40 hover:bg-purple-900/10 transition-all cursor-pointer">
+                                <span class="text-[11px] font-bold text-gray-400 group-hover:text-purple-300 font-mono tracking-tighter">${symClean}</span>
+                                <div class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" onchange="toggleUserPref('${u.id}', '${sym}', this.checked)" ${isChecked} class="pref-chk-${u.id} sr-only peer" value="${sym}">
+                                    <div class="w-7 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
+                                </div>
+                            </label>`;
+                    });
+                    checksHtml += '</div>';
+                    return `
+                    <tr class="border-b border-gray-700/50 hover:bg-white/5 transition-colors">
+                        <td class="py-6 px-6 text-gray-500 text-[10px] font-mono">${u.id}</td>
+                        <td class="py-6 px-6">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-xs font-bold shadow-lg">
+                                    ${u.username ? u.username[0].toUpperCase() : 'A'}
+                                </div>
+                                <span class="text-white font-bold tracking-tight">${u.username || 'Anónimo'}</span>
+                            </div>
+                        </td>
+                        <td class="py-6 px-6 w-full lg:w-2/3">${checksHtml}</td>
+                        <td class="py-6 px-6">
+                            <div class="flex flex-col gap-2 min-w-[120px]">
+                                <button onclick="sendPrivateMessage('${u.id}', '${u.username || 'Usuario'}')"
+                                    class="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg hover:shadow-blue-500/20 active:scale-95">
+                                    <span>📩</span> Mensaje
+                                </button>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="simulateUserAlert('${u.id}')" title="Test Alert"
+                                        class="bg-gray-800 hover:bg-purple-900/40 text-purple-400 p-2 rounded-lg text-xs transition-colors border border-gray-700 hover:border-purple-500/30 flex items-center justify-center">🧪</button>
+                                    <button onclick="deleteUser('${u.id}')" title="Eliminar"
+                                        class="bg-gray-800 hover:bg-red-900/40 text-red-500 p-2 rounded-lg text-xs transition-colors border border-gray-700 hover:border-red-500/30 flex items-center justify-center">🗑️</button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('');
+            });
     } // end isDitox
 
-    // Both modes load: youtube channels & traders
+    // ─── A+ ONLY ─────────────────────────────────────────────────────────────
+    if (isAPlus) {
+        // Hide restricted sidebar nav items (desktop)
+        const restricted = ['bitacora', 'history', 'users', 'broadcast'];
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            const attr = btn.getAttribute('onclick') || '';
+            if (restricted.some(sec => attr.includes(`'${sec}'`))) {
+                btn.closest('li').style.display = 'none';
+            }
+        });
+    }
+
+    // ─── BOTH MODES ──────────────────────────────────────────────────────────
     loadYoutubeChannels();
-    loadTraders(); // ← Cargar traders
+    loadTraders();
 }
+
 
 function updateSignal(signalId) {
     const select = document.getElementById(`obs-select-${signalId}`);

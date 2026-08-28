@@ -669,7 +669,7 @@ setInterval(async () => {
 // Endpoint para verificar contraseña A+
 app.post('/api/verify-aplus', express.json(), (req, res) => {
     const { password } = req.body;
-    if (password === process.env['CONTRASEÑA_A+']) {
+    if (password === process.env['ContraAPLUS']) {
         res.json({ success: true });
     } else {
         res.json({ success: false });
