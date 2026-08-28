@@ -228,11 +228,11 @@ async function procesarMercado() {
                     const { calcularTangenteRSI } = require('./indicators');
                     
                     // Tangente 2h (usando la data actual)
-                    tangentes['2h'] = calcularTangenteRSI(closes) || 0;
+                    tangentes['2h'] = calcularTangenteRSI(closes) || { tangente: 0, currentSMA: 0, avgSMA: 0 };
 
                     const data4h = await fetchData(symbol, '4h');
                     if (data4h) {
-                        tangentes['4h'] = calcularTangenteRSI(data4h.closes) || 0;
+                        tangentes['4h'] = calcularTangenteRSI(data4h.closes) || { tangente: 0, currentSMA: 0, avgSMA: 0 };
                         const ind4h = calcularIndicadores(data4h.closes, data4h.highs, data4h.lows, 22, 22, 10);
                         if (ind4h && ind4h.tangentsHistory && ind4h.tangentsHistory.length > 0) {
                             // Evaluar promedio de últimas 10 pendientes
@@ -249,7 +249,7 @@ async function procesarMercado() {
 
                     const data1d = await fetchData(symbol, '1d');
                     if (data1d) {
-                        tangentes['1d'] = calcularTangenteRSI(data1d.closes) || 0;
+                        tangentes['1d'] = calcularTangenteRSI(data1d.closes) || { tangente: 0, currentSMA: 0, avgSMA: 0 };
                     }
 
                 } catch (e) {

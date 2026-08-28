@@ -57,13 +57,53 @@ function openReviewModal(symbol, price, status, emoji, entryType, entryPrice, ma
     }
 
     // Populate Tangentes (RSI Suavizado 20)
-    // Try to get from cached dashboard data
     const key = symbol + '_2h';
     const estado = (window._dashboardData && window._dashboardData.estadoAlertas && window._dashboardData.estadoAlertas[key]) || {};
     const tangentes = estado.tangentes || {};
-    applyTangenteToEl('tangente-2h', tangentes['2h'] !== undefined ? tangentes['2h'] : null);
-    applyTangenteToEl('tangente-4h', tangentes['4h'] !== undefined ? tangentes['4h'] : null);
-    applyTangenteToEl('tangente-1d', tangentes['1d'] !== undefined ? tangentes['1d'] : null);
+    
+    applyTangenteToEl('tangente-2h', tangentes['2h'], 'canvas-2h');
+    applyTangenteToEl('tangente-4h', tangentes['4h'], 'canvas-4h');
+    applyTangenteToEl('tangente-1d', tangentes['1d'], 'canvas-1d');
+
+    // Evaluate Ditox Recommendation
+    const t2h = tangentes['2h'];
+    const t4h = tangentes['4h'];
+    const t1d = tangentes['1d'];
+    
+    let recMessage = "Sin oportunidades";
+
+    function getRecState(pObj, tf) {
+        if (!pObj || typeof pObj.tangente !== 'number') return null;
+        const { tangente, currentSMA, avgSMA } = pObj;
+        
+        if (tangente >= -0.3 && tangente <= 0.3) {
+            if (avgSMA > currentSMA) return { msg: `POSIBLE TERRENO LONG EN ${tf}`, level: 2 };
+            if (avgSMA < currentSMA) return { msg: `POSIBLE TERRENO SHORT EN ${tf}`, level: 2 };
+        } else if (tangente >= -0.5 && tangente <= 0.5) {
+            return { msg: `Se empieza a calmar el movimiento en ${tf}`, level: 1 };
+        }
+        return null;
+    }
+
+    const states = [
+        getRecState(t1d, '1D'),
+        getRecState(t4h, '4H'),
+        getRecState(t2h, '2H')
+    ].filter(s => s !== null);
+
+    if (states.length > 0) {
+        states.sort((a, b) => b.level - a.level);
+        recMessage = states[0].msg;
+    }
+
+    const recEl = document.getElementById('ditox-rec-text');
+    if (recEl) {
+        recEl.textContent = recMessage;
+        recEl.className = 'text-sm font-bold ' + 
+            (recMessage.includes('LONG') ? 'text-green-400' : 
+            recMessage.includes('SHORT') ? 'text-red-400' : 
+            recMessage.includes('calmar') ? 'text-yellow-400' : 'text-gray-400');
+    }
 
     document.getElementById('modal-review').showModal();
 }
@@ -135,6 +175,37 @@ async function fetchDashboardData() {
                 mfEl.className = mfClass;
                 const mfText = macroForce.charAt(0).toUpperCase() + macroForce.slice(1).toLowerCase();
                 mfEl.textContent = 'Macro (4h): ' + mfText;
+
+                // Ditox Recommendation Update
+                const tangentes = alertState.tangentes || {};
+                function getRecStateCard(pObj, tf) {
+                    if (!pObj || typeof pObj.tangente !== 'number') return null;
+                    const { tangente, currentSMA, avgSMA } = pObj;
+                    if (tangente >= -0.3 && tangente <= 0.3) {
+                        if (avgSMA > currentSMA) return `POSIBLE TERRENO LONG EN ${tf}`;
+                        if (avgSMA < currentSMA) return `POSIBLE TERRENO SHORT EN ${tf}`;
+                    }
+                    return null;
+                }
+                const rec1d = getRecStateCard(tangentes['1d'], '1D');
+                const rec4h = getRecStateCard(tangentes['4h'], '4H');
+                const rec2h = getRecStateCard(tangentes['2h'], '2H');
+                const topRec = rec1d || rec4h || rec2h;
+
+                let ditoxRecEl = card.querySelector('.ditox-rec-card');
+                if (!ditoxRecEl) {
+                    ditoxRecEl = document.createElement('p');
+                    ditoxRecEl.className = 'ditox-rec-card text-xs font-bold mt-1';
+                    card.querySelector('.relative.z-10.mb-6').appendChild(ditoxRecEl);
+                }
+                
+                if (topRec) {
+                    ditoxRecEl.textContent = `⚠️ ${topRec}`;
+                    ditoxRecEl.className = 'ditox-rec-card text-xs font-bold mt-1 animate-pulse ' + 
+                        (topRec.includes('LONG') ? 'text-green-400' : 'text-red-400');
+                } else {
+                    ditoxRecEl.textContent = '';
+                }
             }
         });
 
@@ -519,9 +590,17 @@ if (localStorage.getItem('ditoxMode') === 'true' || localStorage.getItem('aplusM
 
     // ─── A+ ONLY ─────────────────────────────────────────────────────────────
     if (isAPlus) {
-        // Hide restricted sidebar nav items (desktop)
+        // Hide restricted sidebar nav items (desktop and mobile)
         const restricted = ['bitacora', 'history', 'users', 'broadcast'];
+        
         document.querySelectorAll('.nav-btn').forEach(btn => {
+            const attr = btn.getAttribute('onclick') || '';
+            if (restricted.some(sec => attr.includes(`'${sec}'`))) {
+                btn.closest('li').style.display = 'none';
+            }
+        });
+
+        document.querySelectorAll('.mob-nav-btn').forEach(btn => {
             const attr = btn.getAttribute('onclick') || '';
             if (restricted.some(sec => attr.includes(`'${sec}'`))) {
                 btn.closest('li').style.display = 'none';
@@ -1807,14 +1886,17 @@ const PHASE_GRADS = [
 function mobNavClick(btn, section) {
     const list = document.querySelectorAll('#mob-nav-list li');
     list.forEach(li => li.classList.remove('active'));
-    btn.closest('li').classList.add('active');
+    const li = btn.closest('li');
+    li.classList.add('active');
 
     // Move indicator
     const indicator = document.querySelector('.mn-indicator');
-    if (indicator) {
-        const items = Array.from(document.querySelectorAll('#mob-nav-list li'));
-        const idx = items.indexOf(btn.closest('li'));
-        indicator.style.transform = `translateX(${idx * 100}%)`;
+    const navInner = document.querySelector('#mobile-nav-inner');
+    if (indicator && navInner) {
+        const liRect = li.getBoundingClientRect();
+        const navRect = navInner.getBoundingClientRect();
+        const left = (liRect.left - navRect.left) + (liRect.width / 2) - 28; // 28 is half of indicator width (56/2)
+        indicator.style.transform = `translateX(${left}px)`;
     }
 
     showSection(section);
@@ -1832,13 +1914,17 @@ function initMobileNav() {
     }
 
     // Position indicator on active item initially
-    const activeItem = document.querySelector('#mob-nav-list li.active');
-    const indicator = document.querySelector('.mn-indicator');
-    if (activeItem && indicator) {
-        const items = Array.from(document.querySelectorAll('#mob-nav-list li'));
-        const idx = items.indexOf(activeItem);
-        indicator.style.transform = `translateX(${idx * 100}%)`;
-    }
+    setTimeout(() => {
+        const activeItem = document.querySelector('#mob-nav-list li.active');
+        const indicator = document.querySelector('.mn-indicator');
+        const navInner = document.querySelector('#mobile-nav-inner');
+        if (activeItem && indicator && navInner) {
+            const liRect = activeItem.getBoundingClientRect();
+            const navRect = navInner.getBoundingClientRect();
+            const left = (liRect.left - navRect.left) + (liRect.width / 2) - 28;
+            indicator.style.transform = `translateX(${left}px)`;
+        }
+    }, 50);
 }
 
 // ========== MOBILE PHASE SLIDER LOGIC ==========
@@ -1877,51 +1963,123 @@ function syncMobilePhase(phase) {
 }
 
 // ========== TANGENT COLOR LOGIC ==========
-function getTangenteStyle(p) {
-    if (p === null || p === undefined || isNaN(p)) return { text: '—', className: 'text-gray-500', animClass: '' };
+function getTangenteStyle(pObj) {
+    if (!pObj || typeof pObj.tangente !== 'number') return { text: '—', color: '#6B7280', animClass: '' };
 
-    const val = parseFloat(p.toFixed(4));
-    let colorClass = '';
+    const val = parseFloat(pObj.tangente.toFixed(4));
+    let color = '';
     let animClass = '';
     const display = val >= 0 ? '+' + val.toFixed(4) : val.toFixed(4);
 
-    if (val < -1) {
-        colorClass = 'text-red-500';
-        animClass = 'tangent-shake';
-    } else if (val < -0.5) {
-        colorClass = 'text-red-500';
-        animClass = 'tangent-pulse';
-    } else if (val < -0.3) {
-        colorClass = 'text-red-400';
-        animClass = '';
-    } else if (val > 1) {
-        colorClass = 'text-green-400';
-        animClass = 'tangent-shake';
-    } else if (val > 0.5) {
-        colorClass = 'text-green-400';
-        animClass = 'tangent-pulse';
-    } else if (val > 0.3) {
-        colorClass = 'text-green-400';
-        animClass = '';
+    // Color gradient calculation
+    if (val === 0) {
+        color = 'rgb(255, 255, 255)';
+    } else if (val > 0) {
+        const intensity = Math.min(val, 1);
+        const r = Math.floor(255 * (1 - intensity));
+        const b = Math.floor(255 * (1 - intensity));
+        color = `rgb(${r}, 255, ${b})`;
     } else {
-        // Between -0.3 and 0.3
-        colorClass = '';
-        animClass = 'tangent-pulse';
+        const intensity = Math.min(Math.abs(val), 1);
+        const g = Math.floor(255 * (1 - intensity));
+        const b = Math.floor(255 * (1 - intensity));
+        color = `rgb(255, ${g}, ${b})`;
     }
 
-    return { text: display, colorClass, animClass, isCyan: val > -0.3 && val < 0.3 };
+    if (val >= -0.3 && val <= 0.3) {
+        animClass = 'tangent-pulse-gentle';
+    }
+
+    return { text: display, color, animClass };
 }
 
-function applyTangenteToEl(elId, p) {
+function applyTangenteToEl(elId, pObj, canvasId) {
     const el = document.getElementById(elId);
     if (!el) return;
-    const { text, colorClass, animClass, isCyan } = getTangenteStyle(p);
+    const { text, color, animClass } = getTangenteStyle(pObj);
     el.textContent = text;
-    el.className = `text-xl font-bold tabular-nums ${colorClass} ${animClass}`;
-    if (isCyan) {
-        el.style.color = '#B2FFFF';
+    el.className = `text-xl font-bold tabular-nums ${animClass}`;
+    el.style.color = color;
+    
+    if (canvasId && pObj && typeof pObj.tangente === 'number') {
+        drawMiniGraph(canvasId, pObj);
+    }
+}
+
+function drawMiniGraph(canvasId, pObj) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    
+    const { tangente, currentSMA, avgSMA } = pObj;
+    
+    ctx.lineWidth = 2;
+    const dotX = w * 0.4;
+    const padding = 5;
+    
+    if (avgSMA > currentSMA && tangente >= -0.3 && tangente <= 0.3) {
+        // Condición A (Terreno LONG)
+        ctx.strokeStyle = '#2dd4bf'; // Celeste verdoso
+        ctx.fillStyle = '#2dd4bf';
+        
+        ctx.beginPath();
+        ctx.moveTo(0, padding);
+        ctx.quadraticCurveTo(dotX, h - padding, dotX, h - padding);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.setLineDash([2, 2]);
+        ctx.moveTo(dotX, h - padding);
+        ctx.quadraticCurveTo(w, padding, w, padding);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        ctx.beginPath();
+        ctx.arc(dotX, h - padding, 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+    } else if (avgSMA < currentSMA && tangente >= -0.3 && tangente <= 0.3) {
+        // Condición B (Terreno SHORT)
+        ctx.strokeStyle = '#fb7185'; // Celeste rojizo
+        ctx.fillStyle = '#fb7185';
+        
+        ctx.beginPath();
+        ctx.moveTo(0, h - padding);
+        ctx.quadraticCurveTo(dotX, padding, dotX, padding);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.setLineDash([2, 2]);
+        ctx.moveTo(dotX, padding);
+        ctx.quadraticCurveTo(w, h - padding, w, h - padding);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        ctx.beginPath();
+        ctx.arc(dotX, padding, 2, 0, Math.PI * 2);
+        ctx.fill();
+        
     } else {
-        el.style.color = '';
+        // Condición C: Recta diagonal
+        ctx.strokeStyle = tangente > 0 ? '#4ade80' : tangente < 0 ? '#f87171' : '#9ca3af';
+        const steepness = Math.min(Math.abs(tangente), 2) / 2;
+        const yOffset = (h - 2*padding) * (1 - steepness);
+        
+        ctx.beginPath();
+        if (tangente > 0) {
+            ctx.moveTo(padding, h - padding);
+            ctx.lineTo(w - padding, padding + yOffset);
+        } else if (tangente < 0) {
+            ctx.moveTo(padding, padding);
+            ctx.lineTo(w - padding, h - padding - yOffset);
+        } else {
+            ctx.moveTo(padding, h/2);
+            ctx.lineTo(w - padding, h/2);
+        }
+        ctx.stroke();
     }
 }
 

@@ -100,9 +100,9 @@ function calcularTICK(highs, lows, currentPrice, terrain) {
 }
 
 function calcularTangenteRSI(closes) {
-    if (!closes || closes.length < 35) return null; // 14 (RSI) + 20 (SMA)
+    if (!closes || closes.length < 45) return null; // 22 (RSI) + 20 (SMA)
     
-    const rsiValues = RSI.calculate({ values: closes, period: 14 });
+    const rsiValues = RSI.calculate({ values: closes, period: 22 });
     if (rsiValues.length < 1) return null;
     
     const smaValues = SMA.calculate({ values: rsiValues, period: 20 });
@@ -111,7 +111,15 @@ function calcularTangenteRSI(closes) {
     const currentSMA = smaValues[smaValues.length - 1];
     const prevSMA = smaValues[smaValues.length - 2];
     
-    return currentSMA - prevSMA;
+    const tangente = currentSMA - prevSMA;
+    
+    let avgSMA = currentSMA;
+    if (smaValues.length >= 10) {
+        const last10 = smaValues.slice(-10);
+        avgSMA = last10.reduce((a, b) => a + b, 0) / 10;
+    }
+    
+    return { tangente, currentSMA, avgSMA };
 }
 
 module.exports = {

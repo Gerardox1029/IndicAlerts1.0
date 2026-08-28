@@ -923,19 +923,26 @@ app.get('/', (req, res) => {
             box-shadow: 0 -8px 32px rgba(0,0,0,0.4);
             padding: 0 8px;
         }
+        .mobile-nav-inner {
+            height: 70px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+            scrollbar-width: none; /* Firefox */
+        }
+        .mobile-nav-inner::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+        }
         .mobile-nav ul {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
             list-style: none;
             padding: 0;
             margin: 0;
             position: relative;
-            height: 70px;
         }
         .mobile-nav ul li {
             position: relative;
-            width: 60px;
             height: 70px;
             z-index: 1;
             display: flex;
@@ -983,6 +990,7 @@ app.get('/', (req, res) => {
         .mn-indicator {
             position: absolute;
             top: -28px;
+            left: 0;
             width: 56px;
             height: 56px;
             background: linear-gradient(135deg, #4f8ef7, #9b59f5);
@@ -991,6 +999,7 @@ app.get('/', (req, res) => {
             box-shadow: 0 0 18px rgba(99,102,241,0.6);
             transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             pointer-events: none;
+            z-index: 2;
         }
         /* IDEAS DITOX MOBILE SLIDER */
         @media (max-width: 768px) {
@@ -1008,19 +1017,11 @@ app.get('/', (req, res) => {
             transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         /* Tangent color animations */
-        @keyframes pulse-flash {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+        @keyframes gentle-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+            50% { opacity: 0.8; transform: scale(1.05); filter: brightness(1.2); }
         }
-        @keyframes shake-it {
-            0%, 100% { transform: translateX(0); }
-            20% { transform: translateX(-4px); }
-            40% { transform: translateX(4px); }
-            60% { transform: translateX(-3px); }
-            80% { transform: translateX(3px); }
-        }
-        .tangent-pulse { animation: pulse-flash 1.2s ease-in-out infinite; }
-        .tangent-shake { animation: pulse-flash 1.2s ease-in-out infinite, shake-it 0.6s ease-in-out infinite; }
+        .tangent-pulse-gentle { animation: gentle-pulse 2s ease-in-out infinite; display: inline-block; }
     </style>
     <!-- Boxicons -->
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
@@ -1091,51 +1092,53 @@ app.get('/', (req, res) => {
 
     <!-- Mobile Liquid Navigation (hidden on desktop) -->
     <nav class="mobile-nav hidden" id="mobile-liquid-nav">
-        <ul id="mob-nav-list">
-            <li class="active" data-section="dashboard">
-                <button class="mob-nav-btn" onclick="mobNavClick(this, 'dashboard')">
-                    <i class='bx bx-grid-alt mn-icon'></i>
-                    <span class="mn-text">Panel</span>
-                </button>
-            </li>
-            <li data-section="youtube">
-                <button class="mob-nav-btn" onclick="mobNavClick(this, 'youtube')">
-                    <i class='bx bxl-youtube mn-icon'></i>
-                    <span class="mn-text">YouTube</span>
-                </button>
-            </li>
-            <li data-section="traders">
-                <button class="mob-nav-btn" onclick="mobNavClick(this, 'traders')">
-                    <i class='bx bx-brain mn-icon'></i>
-                    <span class="mn-text">Traders</span>
-                </button>
-            </li>
-            <li data-section="bitacora" class="ditox-admin-nav hidden">
-                <button class="mob-nav-btn" onclick="mobNavClick(this, 'bitacora')">
-                    <i class='bx bx-book-bookmark mn-icon'></i>
-                    <span class="mn-text">Bitácora</span>
-                </button>
-            </li>
-            <li data-section="history" class="ditox-admin-nav hidden">
-                <button class="mob-nav-btn" onclick="mobNavClick(this, 'history')">
-                    <i class='bx bx-history mn-icon'></i>
-                    <span class="mn-text">Historial</span>
-                </button>
-            </li>
-            <li data-section="users" class="ditox-admin-nav hidden">
-                <button class="mob-nav-btn" onclick="mobNavClick(this, 'users')">
-                    <i class='bx bx-user mn-icon'></i>
-                    <span class="mn-text">Usuarios</span>
-                </button>
-            </li>
-            <li data-section="broadcast" class="ditox-admin-nav hidden">
-                <button class="mob-nav-btn" onclick="mobNavClick(this, 'broadcast')">
-                    <i class='bx bx-broadcast mn-icon'></i>
-                    <span class="mn-text">Broadcast</span>
-                </button>
-            </li>
-            <div class="mn-indicator"></div>
-        </ul>
+        <div class="mn-indicator"></div>
+        <div class="mobile-nav-inner" id="mobile-nav-inner">
+            <ul id="mob-nav-list">
+                <li class="active" data-section="dashboard">
+                    <button class="mob-nav-btn" onclick="mobNavClick(this, 'dashboard')">
+                        <i class='bx bx-grid-alt mn-icon'></i>
+                        <span class="mn-text">Panel</span>
+                    </button>
+                </li>
+                <li data-section="youtube">
+                    <button class="mob-nav-btn" onclick="mobNavClick(this, 'youtube')">
+                        <i class='bx bxl-youtube mn-icon'></i>
+                        <span class="mn-text">YouTube</span>
+                    </button>
+                </li>
+                <li data-section="traders">
+                    <button class="mob-nav-btn" onclick="mobNavClick(this, 'traders')">
+                        <i class='bx bx-brain mn-icon'></i>
+                        <span class="mn-text">Traders</span>
+                    </button>
+                </li>
+                <li data-section="bitacora" class="ditox-admin-nav hidden">
+                    <button class="mob-nav-btn" onclick="mobNavClick(this, 'bitacora')">
+                        <i class='bx bx-book-bookmark mn-icon'></i>
+                        <span class="mn-text">Bitácora</span>
+                    </button>
+                </li>
+                <li data-section="history" class="ditox-admin-nav hidden">
+                    <button class="mob-nav-btn" onclick="mobNavClick(this, 'history')">
+                        <i class='bx bx-history mn-icon'></i>
+                        <span class="mn-text">Historial</span>
+                    </button>
+                </li>
+                <li data-section="users" class="ditox-admin-nav hidden">
+                    <button class="mob-nav-btn" onclick="mobNavClick(this, 'users')">
+                        <i class='bx bx-user mn-icon'></i>
+                        <span class="mn-text">Usuarios</span>
+                    </button>
+                </li>
+                <li data-section="broadcast" class="ditox-admin-nav hidden">
+                    <button class="mob-nav-btn" onclick="mobNavClick(this, 'broadcast')">
+                        <i class='bx bx-broadcast mn-icon'></i>
+                        <span class="mn-text">Broadcast</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
     </nav>
 
     <div class="stars-layer"></div>
@@ -1780,19 +1783,27 @@ app.get('/', (req, res) => {
                     <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Pendientes (RSI Suavizado 20)</p>
                 </div>
                 <div class="grid grid-cols-3 gap-0 divide-x divide-slate-700">
-                    <div class="p-3 text-center bg-slate-800/30">
+                    <div class="p-3 text-center bg-slate-800/30 flex flex-col items-center">
                         <p class="text-[10px] text-slate-500 uppercase mb-1">2H</p>
-                        <p id="tangente-2h" class="text-xl font-bold tabular-nums">—</p>
+                        <p id="tangente-2h" class="text-xl font-bold tabular-nums mb-1">—</p>
+                        <canvas id="canvas-2h" width="50" height="30" class="mt-1"></canvas>
                     </div>
-                    <div class="p-3 text-center bg-slate-800/30">
+                    <div class="p-3 text-center bg-slate-800/30 flex flex-col items-center">
                         <p class="text-[10px] text-slate-500 uppercase mb-1">4H</p>
-                        <p id="tangente-4h" class="text-xl font-bold tabular-nums">—</p>
+                        <p id="tangente-4h" class="text-xl font-bold tabular-nums mb-1">—</p>
+                        <canvas id="canvas-4h" width="50" height="30" class="mt-1"></canvas>
                     </div>
-                    <div class="p-3 text-center bg-slate-800/30">
+                    <div class="p-3 text-center bg-slate-800/30 flex flex-col items-center">
                         <p class="text-[10px] text-slate-500 uppercase mb-1">1D</p>
-                        <p id="tangente-1d" class="text-xl font-bold tabular-nums">—</p>
+                        <p id="tangente-1d" class="text-xl font-bold tabular-nums mb-1">—</p>
+                        <canvas id="canvas-1d" width="50" height="30" class="mt-1"></canvas>
                     </div>
                 </div>
+            </div>
+
+            <div id="review-ditox-recommendation" class="mt-4 p-4 rounded-2xl bg-gray-800/50 border border-gray-700 text-center">
+                <p class="text-[10px] text-blue-400 uppercase font-bold mb-1 tracking-wider">🧠 Recomendación Ditox</p>
+                <p id="ditox-rec-text" class="text-sm font-bold text-white"></p>
             </div>
             <br>
 
