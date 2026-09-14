@@ -1027,6 +1027,7 @@ app.get('/', (req, res) => {
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body class="text-gray-200 min-h-screen p-4 md:p-8">
 
@@ -1589,6 +1590,14 @@ app.get('/', (req, res) => {
                         </h2>
                         <p class="text-gray-400 text-sm mt-1">Envía análisis, imágenes y texto a múltiples grupos a la vez.</p>
                     </div>
+                    <div id="broadcast-loading-container" class="hidden items-center gap-4">
+                        <span class="text-blue-400 font-bold text-sm uppercase tracking-widest animate-pulse">Enviando mensajes...</span>
+                        <div class="typewriter" style="transform: scale(0.6); transform-origin: right center;">
+                            <div class="slide"><i></i></div>
+                            <div class="paper"></div>
+                            <div class="keyboard"></div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1744,10 +1753,12 @@ app.get('/', (req, res) => {
         </div>
     </dialog>
 
-    <dialog id="modal-review" class="bg-slate-900 text-white rounded-3xl p-0 w-full max-w-md shadow-2xl border border-blue-500/30">
-        <div class="relative overflow-hidden p-8 text-center">
+    <dialog id="modal-review" class="bg-slate-900 text-white rounded-3xl p-0 w-full max-w-md shadow-2xl border border-blue-500/30 relative">
+        <div id="modal-review-content" class="relative overflow-hidden p-8 text-center bg-slate-900">
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-600"></div>
-            
+            <button onclick="toggleShareOverlay()" id="btn-share-review" class="absolute top-4 right-4 z-10 text-slate-400 hover:text-white transition-colors bg-slate-800 hover:bg-slate-700 p-2 rounded-full border border-slate-600 shadow-md">
+                <i class='bx bx-share-alt'></i>
+            </button>
             <div class="mb-6">
                  <div id="review-emoji" class="text-6xl mb-4 filter drop-shadow-xl animate-bounce"></div>
                  <h3 id="review-symbol" class="text-3xl font-bold text-white mb-1"></h3>
@@ -1809,6 +1820,40 @@ app.get('/', (req, res) => {
             <button onclick="this.closest('dialog').close()" class="w-full py-3 rounded-xl bg-white text-slate-900 font-bold hover:bg-gray-200 transition-colors">
                 Cerrar Vista
             </button>
+        </div>
+        
+        <!-- Share Overlay -->
+        <div id="share-overlay" class="absolute inset-0 bg-slate-900/95 backdrop-blur-sm z-50 flex-col items-center justify-center hidden opacity-0 transition-opacity duration-300 rounded-3xl">
+            <button onclick="toggleShareOverlay()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full border border-slate-700">
+                <i class='bx bx-x text-xl'></i>
+            </button>
+            <h3 class="text-xl font-bold text-white mb-4 mt-6">Compartir Análisis</h3>
+            
+            <div id="share-preview-container" class="mb-6 w-3/4 max-w-xs border border-slate-700 rounded-xl overflow-hidden shadow-2xl relative min-h-[200px] flex items-center justify-center bg-slate-800 flex-shrink-0">
+                <div id="share-spinner" class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                <img id="share-preview-img" src="" class="hidden w-full h-auto">
+            </div>
+            
+            <div class="flex gap-6 mt-2">
+                <button onclick="downloadShareImage()" class="flex flex-col items-center group">
+                    <div class="w-12 h-12 rounded-full bg-blue-600/20 border border-blue-500/50 flex items-center justify-center text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-all mb-2">
+                        <i class='bx bx-download text-xl'></i>
+                    </div>
+                    <span class="text-xs text-slate-300">Descargar</span>
+                </button>
+                <button onclick="copyShareImage()" class="flex flex-col items-center group">
+                    <div class="w-12 h-12 rounded-full bg-purple-600/20 border border-purple-500/50 flex items-center justify-center text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-all mb-2">
+                        <i class='bx bx-copy text-xl'></i>
+                    </div>
+                    <span class="text-xs text-slate-300">Copiar</span>
+                </button>
+                <button onclick="telegramShareImage()" class="flex flex-col items-center group">
+                    <div class="w-12 h-12 rounded-full bg-sky-600/20 border border-sky-500/50 flex items-center justify-center text-sky-400 group-hover:bg-sky-500 group-hover:text-white transition-all mb-2">
+                        <i class='bx bxl-telegram text-xl'></i>
+                    </div>
+                    <span class="text-xs text-slate-300">Telegram</span>
+                </button>
+            </div>
         </div>
     </dialog>
 

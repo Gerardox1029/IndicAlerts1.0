@@ -108,6 +108,100 @@ function openReviewModal(symbol, price, status, emoji, entryType, entryPrice, ma
     document.getElementById('modal-review').showModal();
 }
 
+// --- SHARE MODAL LOGIC ---
+let shareBlobCache = null;
+
+function toggleShareOverlay() {
+    const overlay = document.getElementById('share-overlay');
+    const isHidden = overlay.classList.contains('hidden');
+    
+    if (isHidden) {
+        overlay.classList.remove('hidden');
+        // Small delay to allow display:block to apply before animating opacity
+        setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+        generateShareImage();
+    } else {
+        overlay.classList.add('opacity-0');
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+            document.getElementById('share-preview-img').classList.add('hidden');
+            document.getElementById('share-spinner').classList.remove('hidden');
+            shareBlobCache = null;
+        }, 300);
+    }
+}
+
+function generateShareImage() {
+    const content = document.getElementById('modal-review-content');
+    const btnShare = document.getElementById('btn-share-review');
+    
+    // Hide share button temporarily for screenshot
+    btnShare.style.display = 'none';
+    
+    html2canvas(content, {
+        backgroundColor: '#0f172a', // Tailwind slate-900
+        scale: 2, // High res
+        useCORS: true,
+        logging: false
+    }).then(canvas => {
+        btnShare.style.display = '';
+        
+        canvas.toBlob(blob => {
+            shareBlobCache = blob;
+            const url = URL.createObjectURL(blob);
+            const img = document.getElementById('share-preview-img');
+            img.src = url;
+            img.classList.remove('hidden');
+            document.getElementById('share-spinner').classList.add('hidden');
+        }, 'image/png');
+    }).catch(err => {
+        console.error('Error generating image', err);
+        btnShare.style.display = '';
+    });
+}
+
+function downloadShareImage() {
+    if (!shareBlobCache) return;
+    const url = URL.createObjectURL(shareBlobCache);
+    const a = document.createElement('a');
+    a.href = url;
+    const symbol = document.getElementById('review-symbol').innerText || 'Par';
+    a.download = `IndicAlert_${symbol}.png`;
+    a.click();
+    showShareToast('Imagen descargada ✔');
+}
+
+function copyShareImage() {
+    if (!shareBlobCache) return;
+    try {
+        navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': shareBlobCache })
+        ]).then(() => {
+            showShareToast('Imagen copiada ✔');
+        });
+    } catch (err) {
+        console.error('Clipboard failed', err);
+        showShareToast('No se pudo copiar la imagen');
+    }
+}
+
+function telegramShareImage() {
+    const symbol = document.getElementById('review-symbol').innerText || 'el par';
+    const text = encodeURIComponent(`Revisando análisis de ${symbol} en IndicAlerts. ¡Únete a la acción! 🚀`);
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${text}`, '_blank');
+}
+
+function showShareToast(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg z-[100] transition-opacity duration-300 font-bold';
+    toast.innerText = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 2000);
+}
+
 async function fetchDashboardData() {
     try {
         const response = await fetch('/api/dashboard-data');
@@ -993,6 +1087,12 @@ function sendGroupBroadcast() {
     const originalText = btn.innerHTML;
     btn.innerHTML = '<span>⏳</span> Enviando...';
     btn.disabled = true;
+    
+    const loaderContainer = document.getElementById('broadcast-loading-container');
+    if (loaderContainer) {
+        loaderContainer.classList.remove('hidden');
+        loaderContainer.classList.add('flex');
+    }
 
     const imageBase64 = imgPreviewSrc.startsWith('data:image') ? imgPreviewSrc : null;
 
@@ -1035,6 +1135,11 @@ function sendGroupBroadcast() {
     .finally(() => {
         btn.innerHTML = originalText;
         btn.disabled = false;
+        const loaderContainer = document.getElementById('broadcast-loading-container');
+        if (loaderContainer) {
+            loaderContainer.classList.add('hidden');
+            loaderContainer.classList.remove('flex');
+        }
     });
 }
 

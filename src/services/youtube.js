@@ -106,6 +106,8 @@ async function getLatestValidVideo(canal) {
                     publishedAt: item.snippet.publishedAt,
                     channelTitle: item.snippet.channelTitle
                 };
+            } else {
+                console.info(`[YT] [INFO] Video ${item.id} descartado por filtros de validación en ${canal.nombre}`);
             }
         }
 
@@ -122,7 +124,9 @@ async function getTranscript(videoId) {
         const transcriptRaw = await YoutubeTranscript.fetchTranscript(videoId);
         return transcriptRaw.map(item => item.text).join(' ');
     } catch (error) {
-        throw new Error('NO_TRANSCRIPT');
+        const err = new Error('NO_TRANSCRIPT');
+        err.videoId = videoId;
+        throw err;
     }
 }
 
@@ -244,9 +248,19 @@ async function startYoutubePolling(enviarTelegramFn) {
                     }
                 } catch (error) {
                     if (error.message === 'NO_VALID_VIDEO') {
-                        console.warn(`[YT] No hay videos válidos para ${canal.nombre}.`);
+                        console.info(`[YT] [INFO] Ningún video cumplió los filtros de validación en ${canal.nombre}.`);
+                    } else if (error.message === 'NO_TRANSCRIPT') {
+                        console.info(`[YT] [INFO] Transcripción no disponible para el video ${error.videoId || ''} en ${canal.nombre}.`);
+                    } else if (error.response && error.response.status === 404) {
+                        console.warn(`[YT] [WARN] Canal o recurso no encontrado (Status code 404) para ${canal.nombre}.`);
+                    } else if (error.response && [500, 502, 503].includes(error.response.status)) {
+                        console.warn(`[YT] [WARN] Caída temporal del servidor de YouTube (Status code ${error.response.status}) para ${canal.nombre}.`);
+                    } else if ((error.code && ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND'].includes(error.code)) || error.message.includes('fetch failed') || error.message.includes('network')) {
+                        console.warn(`[YT] [WARN] Error de red o desconexión al consultar ${canal.nombre}: ${error.message}`);
+                    } else if (error.message.includes('429') || error.message.includes('Quota') || (error.response && error.response.status === 429)) {
+                        console.warn(`[YT] [WARN] API Key de Gemini saturada o cuota excedida. Reintentando próximo ciclo.`);
                     } else {
-                        console.error(`[YT] Error en polling de ${canal.nombre}:`, error.message);
+                        console.warn(`[YT] [WARN] Error inesperado en ${canal.nombre}: ${error.message}`);
                     }
                 }
             }
