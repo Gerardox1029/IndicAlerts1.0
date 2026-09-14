@@ -105,7 +105,13 @@ function openReviewModal(symbol, price, status, emoji, entryType, entryPrice, ma
             recMessage.includes('calmar') ? 'text-yellow-400' : 'text-gray-400');
     }
 
-    document.getElementById('modal-review').showModal();
+    const dialog = document.getElementById('modal-review');
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    dialog.showModal();
+    // Native <dialog> can steal focus and jump the page; keep the viewport where the user was.
+    window.scrollTo(scrollX, scrollY);
+    requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
 }
 
 // --- SHARE MODAL LOGIC ---

@@ -727,7 +727,7 @@ app.get('/', (req, res) => {
                     ${lastEntryInfo}
                 </div>
 
-                <button onclick="openReviewModal('${s}', '${price}', '${statusText}', '${statusEmoji}', '${estado.lastEntryType || ''}', '', '${mfText}')" 
+                <button type="button" onclick="event.preventDefault(); event.stopPropagation(); openReviewModal('${s}', '${price}', '${statusText}', '${statusEmoji}', '${estado.lastEntryType || ''}', '', '${mfText}')" 
                     class="relative z-10 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-2 px-4 rounded-xl shadow-lg hover:shadow-blue-500/30 transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 text-sm">
                     Revisar
                 </button>
@@ -863,8 +863,15 @@ app.get('/', (req, res) => {
             to { transform: translateY(-1000px); }
         }
         dialog::backdrop { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
-        dialog[open] { animation: zoomIn 0.2s ease-out; }
+        dialog {
+            position: fixed;
+            inset: 0;
+            margin: auto;
+        }
+        dialog[open] { animation: dialogFade 0.2s ease-out; }
+        @keyframes dialogFade { from { opacity: 0; } to { opacity: 1; } }
         @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        #modal-review[open] #modal-review-content { animation: zoomIn 0.2s ease-out; }
         /* Scrollbar custom */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #1f2937; }
@@ -1753,7 +1760,7 @@ app.get('/', (req, res) => {
         </div>
     </dialog>
 
-    <dialog id="modal-review" class="bg-slate-900 text-white rounded-3xl p-0 w-full max-w-md shadow-2xl border border-blue-500/30 relative">
+    <dialog id="modal-review" class="bg-slate-900 text-white rounded-3xl p-0 w-full max-w-md shadow-2xl border border-blue-500/30">
         <div id="modal-review-content" class="relative overflow-hidden p-8 text-center bg-slate-900">
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-600"></div>
             <button type="button" onclick="toggleShareOverlay()" id="btn-share-review" class="absolute top-4 right-4 z-10 text-slate-400 hover:text-white transition-colors bg-slate-800 hover:bg-slate-700 p-2 rounded-full border border-slate-600 shadow-md">

@@ -4066,7 +4066,11 @@
    SHARE OVERLAY (Exportar como imagen)
    ========================================================================== */
 #modal-review {
+  position: fixed;
+  inset: 0;
+  margin: auto;
   overflow: hidden;
+  transform: none;
 }
 
 .share-overlay {
