@@ -26,6 +26,8 @@ document.addEventListener('click', (e) => {
 });
 
 function openReviewModal(symbol, price, status, emoji, entryType, entryPrice, macroForce) {
+    // Invalidate share cache when a different pair is opened
+    if (_shareCacheKey !== symbol) invalidateShareCache();
     document.getElementById('review-symbol').textContent = symbol;
     document.getElementById('review-price').textContent = price;
     document.getElementById('review-status').textContent = status;
@@ -118,6 +120,32 @@ function openReviewModal(symbol, price, status, emoji, entryType, entryPrice, ma
 let shareBlobCache = null;
 let shareGenerating = false;
 let sharePreviewUrl = null;
+let _shareCacheKey = null; // tracks symbol+data key for strict invalidation
+
+// Utility: inject/remove shadow-elimination class for html2canvas performance
+function _injectNoShadows(el) {
+    if (!el) return;
+    let style = document.getElementById('_no-render-shadows-style');
+    if (!style) {
+        style = document.createElement('style');
+        style.id = '_no-render-shadows-style';
+        style.textContent = '.no-render-shadows, .no-render-shadows * { box-shadow: none !important; filter: none !important; text-shadow: none !important; }';
+        document.head.appendChild(style);
+    }
+    el.classList.add('no-render-shadows');
+}
+function _removeNoShadows(el) {
+    if (el) el.classList.remove('no-render-shadows');
+}
+
+function invalidateShareCache() {
+    shareBlobCache = null;
+    _shareCacheKey = null;
+    if (sharePreviewUrl) {
+        URL.revokeObjectURL(sharePreviewUrl);
+        sharePreviewUrl = null;
+    }
+}
 
 function setShareButtonBusy(busy) {
     const btnShare = document.getElementById('btn-share-review');
@@ -174,6 +202,18 @@ function openShareOverlay() {
     const overlay = document.getElementById('share-overlay');
     if (!overlay) return;
 
+    // --- CACHE HIT: skip re-render if same symbol/data ---
+    const currentKey = (document.getElementById('review-symbol') || {}).textContent || '';
+    if (shareBlobCache && sharePreviewUrl && _shareCacheKey === currentKey) {
+        overlay.classList.remove('hidden');
+        requestAnimationFrame(() => overlay.classList.add('is-visible'));
+        showSharePreview(sharePreviewUrl);
+        return;
+    }
+
+    // Cache miss: generate fresh
+    invalidateShareCache();
+    _shareCacheKey = currentKey;
     shareGenerating = true;
     setShareButtonBusy(true);
     showShareLoader();
@@ -196,11 +236,7 @@ function closeShareOverlay() {
     setTimeout(() => {
         overlay.classList.add('hidden');
         showShareLoader();
-        shareBlobCache = null;
-        if (sharePreviewUrl) {
-            URL.revokeObjectURL(sharePreviewUrl);
-            sharePreviewUrl = null;
-        }
+        invalidateShareCache(); // strict cache + memory release
         shareGenerating = false;
         setShareButtonBusy(false);
     }, 250);
@@ -220,12 +256,16 @@ function generateShareImage() {
     const previousDisplay = btnShare ? btnShare.style.display : '';
     if (btnShare) btnShare.style.display = 'none';
 
+    // Inject shadow-elimination class to reduce render-blocking computations
+    _injectNoShadows(content);
+
     html2canvas(content, {
         backgroundColor: '#0f172a',
-        scale: 2,
+        scale: window.devicePixelRatio || 1,
         useCORS: true,
         logging: false
     }).then(canvas => {
+        _removeNoShadows(content);
         if (btnShare) btnShare.style.display = previousDisplay;
         canvas.toBlob(blob => {
             if (!blob) {
@@ -235,7 +275,6 @@ function generateShareImage() {
                 closeShareOverlay();
                 return;
             }
-            if (sharePreviewUrl) URL.revokeObjectURL(sharePreviewUrl);
             shareBlobCache = blob;
             sharePreviewUrl = URL.createObjectURL(blob);
             showSharePreview(sharePreviewUrl);
@@ -243,6 +282,7 @@ function generateShareImage() {
             setShareButtonBusy(false);
         }, 'image/png');
     }).catch(err => {
+        _removeNoShadows(content);
         console.error('Error generating image', err);
         if (btnShare) btnShare.style.display = previousDisplay;
         shareGenerating = false;
@@ -285,9 +325,11 @@ function telegramShareImage() {
 
 function showShareToast(msg) {
     const toast = document.createElement('div');
-    toast.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg z-[100] transition-opacity duration-300 font-bold';
+    // Appended inside #share-overlay so it sits above the backdrop blur;
+    // falls back to body if the overlay isn't available (e.g. general errors).
+    toast.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg z-[9999] transition-opacity duration-300 font-bold';
     toast.innerText = msg;
-    document.body.appendChild(toast);
+    (document.getElementById('share-overlay') || document.body).appendChild(toast);
     setTimeout(() => {
         toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 300);

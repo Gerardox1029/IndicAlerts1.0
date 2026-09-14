@@ -685,7 +685,72 @@ app.get('/api/dashboard-data', (req, res) => {
     });
 });
 
-// --- DASHBOARD FRONTEND ---
+// --- Chart Image Generator for Telegram Bot ---
+// Returns a PNG chart image for a given symbol using QuickChart.io (no extra deps).
+// The bot calls this endpoint to get a buffer to send via bot.sendPhoto().
+app.get('/api/chart-image/:symbol', async (req, res) => {
+    const axios = require('axios');
+    const symbol = req.params.symbol.toUpperCase();
+
+    // Gather tangente data from in-memory state for 2h, 4h, 1d
+    const key2h = `${symbol}_2h`;
+    const alertState = estadoAlertas[key2h] || {};
+    const tangentes = alertState.tangentes || {};
+
+    const labels = ['2H', '4H', '1D'];
+    const dataPoints = labels.map(tf => {
+        const t = tangentes[tf.toLowerCase()] || tangentes[tf];
+        return (t && typeof t.tangente === 'number') ? parseFloat(t.tangente.toFixed(3)) : 0;
+    });
+
+    const currentPrice = alertState.currentPrice || '—';
+    const statusText   = alertState.currentStateText || 'Sin datos';
+    const statusEmoji  = alertState.currentStateEmoji || '⏳';
+
+    const chartConfig = {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: `Pendiente RSI(22) Suavizado – ${symbol}`,
+                data: dataPoints,
+                backgroundColor: dataPoints.map(v => v >= 0 ? 'rgba(74,222,128,0.75)' : 'rgba(248,113,113,0.75)'),
+                borderColor:     dataPoints.map(v => v >= 0 ? '#22c55e' : '#ef4444'),
+                borderWidth: 2,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            plugins: {
+                title: {
+                    display: true,
+                    text: [`${statusEmoji} ${symbol} – $${currentPrice}`, statusText],
+                    color: '#f8fafc',
+                    font: { size: 16, weight: 'bold' }
+                },
+                legend: { display: false }
+            },
+            scales: {
+                y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+            }
+        }
+    };
+
+    const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}&bkg=%230f172a&w=600&h=340&devicePixelRatio=2`;
+
+    try {
+        const response = await axios.get(chartUrl, { responseType: 'arraybuffer', timeout: 10000 });
+        res.set('Content-Type', 'image/png');
+        res.set('Cache-Control', 'no-store');
+        res.send(Buffer.from(response.data));
+    } catch (err) {
+        console.error(`[chart-image] Error generando imagen para ${symbol}:`, err.message);
+        res.status(502).json({ error: 'No se pudo generar la imagen del chart' });
+    }
+});
+
+
 app.get('/', (req, res) => {
     const generateCards = (symbols) => symbols.map(s => {
         const i = '2h';
@@ -1763,8 +1828,9 @@ app.get('/', (req, res) => {
     <dialog id="modal-review" class="bg-slate-900 text-white rounded-3xl p-0 w-full max-w-md shadow-2xl border border-blue-500/30">
         <div id="modal-review-content" class="relative overflow-hidden p-8 text-center bg-slate-900">
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-600"></div>
-            <button type="button" onclick="toggleShareOverlay()" id="btn-share-review" class="absolute top-4 right-4 z-10 text-slate-400 hover:text-white transition-colors bg-slate-800 hover:bg-slate-700 p-2 rounded-full border border-slate-600 shadow-md">
-                <i class='bx bx-share-alt'></i>
+            <!-- Top-right: X Close button -->
+            <button type="button" onclick="this.closest('dialog').close()" id="btn-close-review" class="absolute top-4 right-4 z-10 text-slate-400 hover:text-white transition-colors bg-slate-800 hover:bg-slate-700 p-2 rounded-full border border-slate-600 shadow-md" aria-label="Cerrar">
+                <i class='bx bx-x text-xl'></i>
             </button>
             <div class="mb-6">
                  <div id="review-emoji" class="text-6xl mb-4 filter drop-shadow-xl animate-bounce"></div>
@@ -1824,8 +1890,10 @@ app.get('/', (req, res) => {
             </div>
             <br>
 
-            <button onclick="this.closest('dialog').close()" class="w-full py-3 rounded-xl bg-white text-slate-900 font-bold hover:bg-gray-200 transition-colors">
-                Cerrar Vista
+            <!-- Bottom: Compartir button -->
+            <button type="button" onclick="toggleShareOverlay()" id="btn-share-review" class="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all transform active:scale-95 flex items-center justify-center gap-2">
+                <i class='bx bx-share-alt text-lg'></i>
+                Compartir
             </button>
         </div>
         

@@ -35,6 +35,10 @@ const {
 let bot = null;
 let procesarMercadoFn = null; // Dependency injection
 
+// --- Auto-deletion TTL constants (milliseconds) ---
+const REPORT_TTL = 10000;          // 10 s – text report & sticker
+const IMAGE_TTL  = REPORT_TTL * 2; // 20 s – chart image (shown longer)
+
 function setProcesarMercado(fn) {
     procesarMercadoFn = fn;
 }
@@ -520,19 +524,40 @@ By Ditox🔮
                     message_thread_id: threadId,
                     parse_mode: 'HTML',
                     reply_markup: { inline_keyboard }
-                }).then(msg => {
-                    // Borra el mensaje de resultado tras 10 segundos (10000 ms)
+                }).then(sentMsg => {
+                    // Delete text report after REPORT_TTL
                     setTimeout(() => {
-                        bot.deleteMessage(chatId, msg.message_id).catch(() => { });
-                    }, 10000);
+                        bot.deleteMessage(chatId, sentMsg.message_id).catch(() => { });
+                    }, REPORT_TTL);
                 });
+
+                // --- Chart image: fault-tolerant, independent TTL ---
+                try {
+                    const axios = require('axios');
+                    const imageRes = await axios.get(
+                        `http://localhost:${require('./config').PORT}/api/chart-image/${symbol}`,
+                        { responseType: 'arraybuffer', timeout: 8000 }
+                    );
+                    const imageBuffer = Buffer.from(imageRes.data);
+                    const photoMsg = await bot.sendPhoto(chatId, imageBuffer, {
+                        message_thread_id: threadId,
+                        caption: `📈 ${symbol} – ${getPeruTime()} (PE)`
+                    });
+                    // Delete chart image after IMAGE_TTL (double the base)
+                    setTimeout(() => {
+                        bot.deleteMessage(chatId, photoMsg.message_id).catch(() => { });
+                    }, IMAGE_TTL);
+                } catch (imgErr) {
+                    console.error(`[Bot] No se pudo enviar imagen de ${symbol}:`, imgErr.message);
+                    // Graceful degradation: sticker/report flow continues below
+                }
 
                 if (state.stickyDatabase.length > 0) {
                     const randomSticker = state.stickyDatabase[Math.floor(Math.random() * state.stickyDatabase.length)];
-                    bot.sendSticker(chatId, randomSticker, { message_thread_id: threadId }).then(msg => {
+                    bot.sendSticker(chatId, randomSticker, { message_thread_id: threadId }).then(stickerMsg => {
                         setTimeout(() => {
-                            bot.deleteMessage(chatId, msg.message_id).catch(() => { });
-                        }, 10000);
+                            bot.deleteMessage(chatId, stickerMsg.message_id).catch(() => { });
+                        }, REPORT_TTL);
                     }).catch(console.error);
                 }
             } else {

@@ -27,3 +27,8 @@ desktop.ini
 Dockerfile
 Procfile
 package-lock.json
+
+# Archivos y carpetas temporales de Graphify
+graphify-out/
+.graphify_version
+.graphify_analysis.json
