@@ -1756,7 +1756,7 @@ app.get('/', (req, res) => {
     <dialog id="modal-review" class="bg-slate-900 text-white rounded-3xl p-0 w-full max-w-md shadow-2xl border border-blue-500/30 relative">
         <div id="modal-review-content" class="relative overflow-hidden p-8 text-center bg-slate-900">
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-600"></div>
-            <button onclick="toggleShareOverlay()" id="btn-share-review" class="absolute top-4 right-4 z-10 text-slate-400 hover:text-white transition-colors bg-slate-800 hover:bg-slate-700 p-2 rounded-full border border-slate-600 shadow-md">
+            <button type="button" onclick="toggleShareOverlay()" id="btn-share-review" class="absolute top-4 right-4 z-10 text-slate-400 hover:text-white transition-colors bg-slate-800 hover:bg-slate-700 p-2 rounded-full border border-slate-600 shadow-md">
                 <i class='bx bx-share-alt'></i>
             </button>
             <div class="mb-6">
@@ -1823,36 +1823,35 @@ app.get('/', (req, res) => {
         </div>
         
         <!-- Share Overlay -->
-        <div id="share-overlay" class="absolute inset-0 bg-slate-900/95 backdrop-blur-sm z-50 flex-col items-center justify-center hidden opacity-0 transition-opacity duration-300 rounded-3xl">
-            <button onclick="toggleShareOverlay()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full border border-slate-700">
+        <div id="share-overlay" class="share-overlay hidden" onclick="closeShareOverlayFromBackdrop(event)">
+            <button type="button" class="share-overlay-close" onclick="event.stopPropagation(); toggleShareOverlay();" aria-label="Cerrar">
                 <i class='bx bx-x text-xl'></i>
             </button>
-            <h3 class="text-xl font-bold text-white mb-4 mt-6">Compartir Análisis</h3>
-            
-            <div id="share-preview-container" class="mb-6 w-3/4 max-w-xs border border-slate-700 rounded-xl overflow-hidden shadow-2xl relative min-h-[200px] flex items-center justify-center bg-slate-800 flex-shrink-0">
-                <div id="share-spinner" class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                <img id="share-preview-img" src="" class="hidden w-full h-auto">
+
+            <div id="share-loader" class="share-loader">
+                <div id="share-spinner" class="share-spinner" role="status" aria-live="polite"></div>
+                <p class="share-loader-text">Generando imagen…</p>
             </div>
-            
-            <div class="flex gap-6 mt-2">
-                <button onclick="downloadShareImage()" class="flex flex-col items-center group">
-                    <div class="w-12 h-12 rounded-full bg-blue-600/20 border border-blue-500/50 flex items-center justify-center text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-all mb-2">
-                        <i class='bx bx-download text-xl'></i>
-                    </div>
-                    <span class="text-xs text-slate-300">Descargar</span>
-                </button>
-                <button onclick="copyShareImage()" class="flex flex-col items-center group">
-                    <div class="w-12 h-12 rounded-full bg-purple-600/20 border border-purple-500/50 flex items-center justify-center text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-all mb-2">
-                        <i class='bx bx-copy text-xl'></i>
-                    </div>
-                    <span class="text-xs text-slate-300">Copiar</span>
-                </button>
-                <button onclick="telegramShareImage()" class="flex flex-col items-center group">
-                    <div class="w-12 h-12 rounded-full bg-sky-600/20 border border-sky-500/50 flex items-center justify-center text-sky-400 group-hover:bg-sky-500 group-hover:text-white transition-all mb-2">
-                        <i class='bx bxl-telegram text-xl'></i>
-                    </div>
-                    <span class="text-xs text-slate-300">Telegram</span>
-                </button>
+
+            <div id="share-panel" class="share-panel hidden" onclick="event.stopPropagation()">
+                <h3 class="share-panel-title">Compartir Análisis</h3>
+                <div id="share-preview-container" class="share-preview-card">
+                    <img id="share-preview-img" src="" alt="Vista previa del análisis" class="hidden">
+                </div>
+                <div class="share-actions">
+                    <button type="button" onclick="downloadShareImage()" class="share-action-btn share-action-download">
+                        <div class="share-action-icon"><i class='bx bx-download text-xl'></i></div>
+                        <span>Descargar</span>
+                    </button>
+                    <button type="button" onclick="copyShareImage()" class="share-action-btn share-action-copy">
+                        <div class="share-action-icon"><i class='bx bx-copy text-xl'></i></div>
+                        <span>Copiar</span>
+                    </button>
+                    <button type="button" onclick="telegramShareImage()" class="share-action-btn share-action-telegram">
+                        <div class="share-action-icon"><i class='bx bxl-telegram text-xl'></i></div>
+                        <span>Telegram</span>
+                    </button>
+                </div>
             </div>
         </div>
     </dialog>

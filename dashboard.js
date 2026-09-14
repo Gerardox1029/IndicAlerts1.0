@@ -110,53 +110,139 @@ function openReviewModal(symbol, price, status, emoji, entryType, entryPrice, ma
 
 // --- SHARE MODAL LOGIC ---
 let shareBlobCache = null;
+let shareGenerating = false;
+let sharePreviewUrl = null;
+
+function setShareButtonBusy(busy) {
+    const btnShare = document.getElementById('btn-share-review');
+    if (!btnShare) return;
+    btnShare.disabled = busy;
+    btnShare.classList.toggle('is-busy', busy);
+    btnShare.setAttribute('aria-busy', busy ? 'true' : 'false');
+}
+
+function showShareLoader() {
+    const loader = document.getElementById('share-loader');
+    const panel = document.getElementById('share-panel');
+    const img = document.getElementById('share-preview-img');
+    if (loader) loader.classList.remove('hidden');
+    if (panel) panel.classList.add('hidden');
+    if (img) {
+        img.classList.add('hidden');
+        img.removeAttribute('src');
+    }
+}
+
+function showSharePreview(url) {
+    const loader = document.getElementById('share-loader');
+    const panel = document.getElementById('share-panel');
+    const img = document.getElementById('share-preview-img');
+    if (img && url) {
+        img.src = url;
+        img.classList.remove('hidden');
+    }
+    if (loader) loader.classList.add('hidden');
+    if (panel) panel.classList.remove('hidden');
+}
 
 function toggleShareOverlay() {
     const overlay = document.getElementById('share-overlay');
+    if (!overlay) return;
     const isHidden = overlay.classList.contains('hidden');
-    
     if (isHidden) {
-        overlay.classList.remove('hidden');
-        // Small delay to allow display:block to apply before animating opacity
-        setTimeout(() => overlay.classList.remove('opacity-0'), 10);
-        generateShareImage();
+        openShareOverlay();
     } else {
-        overlay.classList.add('opacity-0');
-        setTimeout(() => {
-            overlay.classList.add('hidden');
-            document.getElementById('share-preview-img').classList.add('hidden');
-            document.getElementById('share-spinner').classList.remove('hidden');
-            shareBlobCache = null;
-        }, 300);
+        closeShareOverlay();
     }
+}
+
+function closeShareOverlayFromBackdrop(event) {
+    if (event.target === event.currentTarget) {
+        closeShareOverlay();
+    }
+}
+
+function openShareOverlay() {
+    if (shareGenerating) return;
+
+    const overlay = document.getElementById('share-overlay');
+    if (!overlay) return;
+
+    shareGenerating = true;
+    setShareButtonBusy(true);
+    showShareLoader();
+    overlay.classList.remove('hidden');
+
+    // Paint the spinner before html2canvas blocks the main thread.
+    requestAnimationFrame(() => {
+        overlay.classList.add('is-visible');
+        requestAnimationFrame(() => {
+            setTimeout(generateShareImage, 40);
+        });
+    });
+}
+
+function closeShareOverlay() {
+    const overlay = document.getElementById('share-overlay');
+    if (!overlay || overlay.classList.contains('hidden')) return;
+
+    overlay.classList.remove('is-visible');
+    setTimeout(() => {
+        overlay.classList.add('hidden');
+        showShareLoader();
+        shareBlobCache = null;
+        if (sharePreviewUrl) {
+            URL.revokeObjectURL(sharePreviewUrl);
+            sharePreviewUrl = null;
+        }
+        shareGenerating = false;
+        setShareButtonBusy(false);
+    }, 250);
 }
 
 function generateShareImage() {
     const content = document.getElementById('modal-review-content');
     const btnShare = document.getElementById('btn-share-review');
-    
-    // Hide share button temporarily for screenshot
-    btnShare.style.display = 'none';
-    
+    const overlay = document.getElementById('share-overlay');
+
+    if (!content || !overlay || overlay.classList.contains('hidden')) {
+        shareGenerating = false;
+        setShareButtonBusy(false);
+        return;
+    }
+
+    const previousDisplay = btnShare ? btnShare.style.display : '';
+    if (btnShare) btnShare.style.display = 'none';
+
     html2canvas(content, {
-        backgroundColor: '#0f172a', // Tailwind slate-900
-        scale: 2, // High res
+        backgroundColor: '#0f172a',
+        scale: 2,
         useCORS: true,
         logging: false
     }).then(canvas => {
-        btnShare.style.display = '';
-        
+        if (btnShare) btnShare.style.display = previousDisplay;
         canvas.toBlob(blob => {
+            if (!blob) {
+                showShareToast('No se pudo generar la imagen');
+                shareGenerating = false;
+                setShareButtonBusy(false);
+                closeShareOverlay();
+                return;
+            }
+            if (sharePreviewUrl) URL.revokeObjectURL(sharePreviewUrl);
             shareBlobCache = blob;
-            const url = URL.createObjectURL(blob);
-            const img = document.getElementById('share-preview-img');
-            img.src = url;
-            img.classList.remove('hidden');
-            document.getElementById('share-spinner').classList.add('hidden');
+            sharePreviewUrl = URL.createObjectURL(blob);
+            showSharePreview(sharePreviewUrl);
+            shareGenerating = false;
+            setShareButtonBusy(false);
         }, 'image/png');
     }).catch(err => {
         console.error('Error generating image', err);
-        btnShare.style.display = '';
+        if (btnShare) btnShare.style.display = previousDisplay;
+        shareGenerating = false;
+        setShareButtonBusy(false);
+        showShareToast('No se pudo generar la imagen');
+        closeShareOverlay();
     });
 }
 
